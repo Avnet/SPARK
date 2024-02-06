@@ -1,7 +1,7 @@
 
 # SPARK - Smart Parking AI-Driven RZBoard Kit
 
-Welcome to SPARK, the edge-AI solution for smart EV charging and parking lot management. Bootstrap your Edge AI with RZBoard and the [RZV AI SDK](https://renesas-rz.github.io/rzv_ai_sdk/2.10/).
+Welcome to SPARK, the edge-AI solution for smart EV charging and parking lot management. Bootstrapping your Edge AI with RZBoard and the [RZV AI SDK](https://renesas-rz.github.io/rzv_ai_sdk/2.10/).
 
 ![SPARK](https://github.com/ljkeller/SPARK/assets/44109284/7083da41-0c51-46cc-8a47-4ca51f296b0a)
 
