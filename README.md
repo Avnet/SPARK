@@ -3,6 +3,9 @@
 
 Welcome to SPARK, the cutting-edge solution for smart EV charging and parking lot management. Utilizing AI algorithms on the edge, YOLOv3 on RZBoard, SPARK revolutionizes parking efficiency and user experience.
 
+![SPARK](https://github.com/ljkeller/SPARK/assets/44109284/7083da41-0c51-46cc-8a47-4ca51f296b0a)
+
+
 ## Overview
 
 SPARK is an effective EV charging prototype that integrates YOLO (You Only Look Once) for real-time occupancy detection with the robust RZBoard V2L for a parking lot occupancy/EV charging experience. This system is designed to automate parking lot analysis, streaming edge compute data to your desired target: an information hub like IoT Connect, or an HDMI output. The result: improved user-experience for EV charging customers and parking lot managers.
