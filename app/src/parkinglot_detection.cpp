@@ -53,6 +53,11 @@
 using namespace cv;
 using namespace std;
 
+namespace
+{
+    const char *splash_screen = "spark_bg.png";
+}
+
 /* Global variables */
 vector<Rect> boxes;
 
@@ -412,7 +417,7 @@ int main(int argc, char **argv)
     while (waitKey(1) != 'q')
     {
         Mat frame;
-        frame = cv::imread("parking_bg.jpg");
+        frame = cv::imread(splash_screen);
         cv::resize(frame, frame, cv::Size(1200,800));
         if (add_slot_in_figure)
         {
