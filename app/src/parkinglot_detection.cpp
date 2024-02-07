@@ -75,7 +75,7 @@ bool re_draw = false;
 bool camera_input = false;
 
 const std::string model_dir = "parking_model";
-const std::string app_name = "Parking Lot Assistance";
+const std::string app_name = "SPARK";
 
 int slot_id;
 
@@ -337,7 +337,7 @@ void process_frames(queue<Mat> &frames, bool &stop)
             destroyAllWindows();
             break;
             }
-        imshow("Inference", img);
+        imshow("SPARK", img);
         }
         
     }
@@ -421,8 +421,8 @@ int main(int argc, char **argv)
         cv::resize(frame, frame, cv::Size(1200,800));
         if (add_slot_in_figure)
         {
-            rectangle(frame, Point(415, 523), Point(565, 573), Scalar(150, 150, 150), -1);
-            putText(frame, "Edit Slots", Point(415 + (int)150 / 4, 553), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255), 1);
+            rectangle(frame, Point(415, 523), Point(565, 573), Scalar(0, 0, 0), -1);
+            putText(frame, "Edit Slots", Point(415 + (int)150 / 4, 553), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0), 1);
             add_slot_in_figure = false;
             destroyAllWindows();
             namedWindow("Slot", WINDOW_NORMAL);
@@ -452,21 +452,21 @@ int main(int argc, char **argv)
         }
         else
         {
-            rectangle(frame, Point(415, 523), Point(565, 573), Scalar(255, 0, 0), -1);
-            putText(frame, "Edit Slots", Point(415 + (int)150 / 4, 553), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 255), 1);
+            rectangle(frame, Point(415, 523), Point(565, 573), Scalar(0, 0, 0), -1);
+            putText(frame, "Edit Slots", Point(415 + (int)150 / 4, 553), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255), 1);
         }
         if (start_inference_parking_slot)
         {
             rectangle(frame, Point(687, 523), Point(900, 573), Scalar(0, 0, 0), -1);
-            putText(frame, "Start Inference", Point(687 + (int)150 / 4, 553), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 255), 1);
+            putText(frame, "Start Inference", Point(687 + (int)150 / 4, 553), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255), 1);
             start_inference_parking_slot = false;
             destroyAllWindows();
-            std::cout << "Running tvm runtime" << std::endl;
+            std::cout << "Running TVM runtime" << std::endl;
 
             queue<Mat> frames;
             bool stop = false;
             thread readThread(read_frames, filename, ref(frames), ref(stop));
-            cout << "Waiting for read frames to add frames to buffer!!!!!" << endl;
+            cout << "Waiting for read frames to add frames to buffer!" << endl;
             this_thread::sleep_for(std::chrono::seconds(0));
             thread processThread(process_frames, ref(frames), ref(stop));
             cout << "Processing thread started......" << endl;
@@ -477,8 +477,8 @@ int main(int argc, char **argv)
         }
         else
         {
-            rectangle(frame, Point(687, 523), Point(900, 573), Scalar(255, 0, 0), -1);
-            putText(frame, "Start Inference", Point(687 + (int)150 / 4, 553), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 255), 1);
+            rectangle(frame, Point(687, 523), Point(900, 573), Scalar(0, 0, 0), -1);
+            putText(frame, "Start Inference", Point(687 + (int)150 / 4, 553), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255), 1);
         }
         setMouseCallback(app_name, mouse_callback_button_click);
         imshow(app_name, frame);
