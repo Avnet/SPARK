@@ -56,6 +56,15 @@ using namespace std;
 namespace
 {
     const char *splash_screen = "spark_bg.png";
+    
+    const auto WHITE = cv::Scalar(255, 255, 255);
+    const auto BLACK = cv::Scalar(0, 0, 0);
+
+    // color-blind friendly palette
+    const auto AVNET_GREEN = cv::Scalar(0, 206, 137);
+    const auto AVNET_COMPLEMENTARY = cv::Scalar(138, 48, 230);
+    const auto OCCUPIED_COLOR = cv::Scalar(AVNET_GREEN);
+    const auto UNOCCUPIED_COLOR = cv::Scalar(AVNET_COMPLEMENTARY);
 }
 
 /* Global variables */
@@ -123,7 +132,7 @@ void get_patches(int event, int x, int y, int flags, void *param)
     {
         drawing_box = false;
         box_end = Point2f(x, y);
-        putText(img, "id: " + to_string(slot_id + 1), box_start, FONT_HERSHEY_DUPLEX, 1.0, Scalar(255, 0, 0), 2);
+        putText(img, "id: " + to_string(slot_id + 1), box_start, FONT_HERSHEY_DUPLEX, 1.0, BLACK, 2);
         slot_id += 1;
         rect = cv::Rect(box_start, box_end);
         Rect box(box_start, box_end);
@@ -131,15 +140,15 @@ void get_patches(int event, int x, int y, int flags, void *param)
     }
     if(drawing_box)
     {    
-        rectangle(frame_copy, box_start, box_end, Scalar(0, 0, 255), 2);
+        rectangle(frame_copy, box_start, box_end, AVNET_COMPLEMENTARY, 2);
     }
     else if (!rect.empty())
     {    
-        rectangle(frame_copy, rect, cv::Scalar(0, 0, 255),2);
+        rectangle(frame_copy, rect, AVNET_COMPLEMENTARY,2);
     }
     for (int i = 0; i < boxes.size(); i++)
     {
-         rectangle(img, boxes[i], Scalar(0, 0, 255), 2);
+         rectangle(img, boxes[i], AVNET_COMPLEMENTARY, 2);
     }
     box_end = Point2f(x, y);   
     imshow("image", frame_copy);
@@ -154,7 +163,7 @@ int draw_rectangle(void)
     slot_id = boxes.size();
     for (int i = 0; i < boxes.size(); i++)
     {
-        rectangle(img, boxes[i], Scalar(0, 0, 255), 2);
+        rectangle(img, boxes[i], AVNET_COMPLEMENTARY, 2);
         putText(img, "id: " + to_string(i + 1), Point(boxes[i].x + 10, boxes[i].y - 10), FONT_HERSHEY_DUPLEX, 1.0, Scalar(255, 0, 0), 2);
     }
     unsigned int key = 0;
@@ -206,7 +215,7 @@ redraw_rectangle:
 void removeButtonCallback(int, void *)
 {
     Mat frame = Mat::zeros(600, 600, CV_8UC3);
-    putText(frame, "Enter comma separated integers to remove:", Point(50, 50), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255), 1, LINE_AA);
+    putText(frame, "Enter comma separated integers to remove:", Point(50, 50), FONT_HERSHEY_SIMPLEX, 0.5, AVNET_COMPLEMENTARY, 1, LINE_AA);
     imshow("Frame", frame);
     string inputText;
     int key = -1;
@@ -215,7 +224,7 @@ void removeButtonCallback(int, void *)
         key = waitKey(0);
         if (key != 13)
             inputText += (char)key;
-        putText(frame, inputText, Point(100, 100), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 1);
+        putText(frame, inputText, Point(100, 100), FONT_HERSHEY_SIMPLEX, 0.5, AVNET_GREEN, 1);
         imshow("Frame", frame);
     }
     vector<int> indicesToRemove;
@@ -317,14 +326,14 @@ void process_frames(queue<Mat> &frames, bool &stop)
                 if (floatarr[0] > floatarr[1])
                 {
                     putText(img, "id: " + to_string(i + 1), Point(boxes[i].x + 10, boxes[i].y - 10), FONT_HERSHEY_DUPLEX, 1.0, Scalar(255, 0, 0), 2);
-                    cv::rectangle(img, boxes[i], Scalar(0, 0, 255), 2);
-                    cv::putText(img, "occupied", Point(boxes[i].x - 10, boxes[i].y + boxes[i].height + 25), cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 0, 255), 2, false);
+                    cv::rectangle(img, boxes[i], AVNET_COMPLEMENTARY, 2);
+                    cv::putText(img, "taken", Point(boxes[i].x - 10, boxes[i].y + boxes[i].height + 25), cv::FONT_HERSHEY_DUPLEX, 1, AVNET_COMPLEMENTARY, 2, false);
                 }
                 else
                 {
                     putText(img, "id: " + to_string(i + 1), Point(boxes[i].x + 10, boxes[i].y - 10), FONT_HERSHEY_DUPLEX, 1.0, Scalar(255, 0, 0), 2);
-                    cv::rectangle(img, boxes[i], Scalar(0, 255, 0), 2);
-                    cv::putText(img, "empty", Point(boxes[i].x + 10, boxes[i].y + boxes[i].height + 25), cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 255, 0), 2, false);
+                    cv::rectangle(img, boxes[i], AVNET_GREEN, 2);
+                    cv::putText(img, "empty", Point(boxes[i].x + 10, boxes[i].y + boxes[i].height + 25), cv::FONT_HERSHEY_DUPLEX, 1, AVNET_GREEN, 2, false);
                 }
             }
             auto t2 = std::chrono::high_resolution_clock::now();
@@ -421,18 +430,18 @@ int main(int argc, char **argv)
         cv::resize(frame, frame, cv::Size(1200,800));
         if (add_slot_in_figure)
         {
-            rectangle(frame, Point(415, 523), Point(565, 573), Scalar(0, 0, 0), -1);
-            putText(frame, "Edit Slots", Point(415 + (int)150 / 4, 553), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0), 1);
+            rectangle(frame, Point(415, 523), Point(565, 573), BLACK, -1);
+            putText(frame, "Edit Slots", Point(415 + (int)150 / 4, 553), FONT_HERSHEY_SIMPLEX, 0.5, BLACK, 1);
             add_slot_in_figure = false;
             destroyAllWindows();
             namedWindow("Slot", WINDOW_NORMAL);
             resizeWindow("Slot", 400, 400);
             Rect addButtonRect(50, 50, 150, 100);
             Rect removeButtonRect(200, 50, 150, 100);
-            rectangle(frame1, addButtonRect, Scalar(0, 255, 0), -1);
-            putText(frame1, "Add Slot", Point(75, 105), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0), 1, LINE_AA);
-            rectangle(frame1, removeButtonRect, Scalar(0, 0, 255), -1);
-            putText(frame1, "Remove Slot", Point(210, 105), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0), 1, LINE_AA);
+            rectangle(frame1, addButtonRect, AVNET_GREEN, -1);
+            putText(frame1, "Add Slot", Point(75, 105), FONT_HERSHEY_SIMPLEX, 0.5, BLACK, 1, LINE_AA);
+            rectangle(frame1, removeButtonRect, AVNET_COMPLEMENTARY, -1);
+            putText(frame1, "Remove Slot", Point(210, 105), FONT_HERSHEY_SIMPLEX, 0.5, BLACK, 1, LINE_AA);
             imshow("Slot", frame1);
 
             setMouseCallback(
@@ -452,13 +461,13 @@ int main(int argc, char **argv)
         }
         else
         {
-            rectangle(frame, Point(415, 523), Point(565, 573), Scalar(0, 0, 0), -1);
-            putText(frame, "Edit Slots", Point(415 + (int)150 / 4, 553), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255), 1);
+            rectangle(frame, Point(415, 523), Point(565, 573), BLACK, -1);
+            putText(frame, "Edit Slots", Point(415 + (int)150 / 4, 553), FONT_HERSHEY_SIMPLEX, 0.5, WHITE, 1);
         }
         if (start_inference_parking_slot)
         {
-            rectangle(frame, Point(687, 523), Point(900, 573), Scalar(0, 0, 0), -1);
-            putText(frame, "Start Inference", Point(687 + (int)150 / 4, 553), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255), 1);
+            rectangle(frame, Point(687, 523), Point(900, 573), BLACK, -1);
+            putText(frame, "Start Inference", Point(687 + (int)150 / 4, 553), FONT_HERSHEY_SIMPLEX, 0.5, WHITE, 1);
             start_inference_parking_slot = false;
             destroyAllWindows();
             std::cout << "Running TVM runtime" << std::endl;
@@ -477,8 +486,8 @@ int main(int argc, char **argv)
         }
         else
         {
-            rectangle(frame, Point(687, 523), Point(900, 573), Scalar(0, 0, 0), -1);
-            putText(frame, "Start Inference", Point(687 + (int)150 / 4, 553), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255), 1);
+            rectangle(frame, Point(687, 523), Point(900, 573), BLACK, -1);
+            putText(frame, "Start Inference", Point(687 + (int)150 / 4, 553), FONT_HERSHEY_SIMPLEX, 0.5, WHITE, 1);
         }
         setMouseCallback(app_name, mouse_callback_button_click);
         imshow(app_name, frame);
