@@ -337,11 +337,13 @@ void process_frames(queue<Mat> &frames, bool &stop)
                 Size labelSize = getTextSize(label, FONT_HERSHEY_DUPLEX, PRIMARY_LABEL_SCALE, thickness, &baseline);
 
                 // Calculate the position for the text background
-                Point textOrg(boxes[i].x, boxes[i].y - baseline - thickness);
-                Point labelOrg(boxes[i].x, boxes[i].y + boxes[i].height + labelSize.height);
+                Point textOrg(boxes[i].x, boxes[i].y + boxes[i].height + textSize.height);
+                Point labelOrg(boxes[i].x, boxes[i].y - baseline - thickness);
+
                 // Draw the background rectangle for better visibility
                 rectangle(img, textOrg + Point(0, baseline), textOrg + Point(textSize.width, -textSize.height), boxColor, FILLED);
                 rectangle(img, labelOrg + Point(0, baseline), labelOrg + Point(labelSize.width, -labelSize.height), boxColor, FILLED);
+
                 // Now draw the text over the rectangle
                 putText(img, "id: " + to_string(i + 1), textOrg + Point(0, 3), FONT_HERSHEY_DUPLEX, SECONDARY_LABEL_SCALE, BLACK, thickness);
                 putText(img, label, labelOrg + Point(0, 2), FONT_HERSHEY_DUPLEX, PRIMARY_LABEL_SCALE, BLACK, thickness);
