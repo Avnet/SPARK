@@ -337,7 +337,7 @@ void process_frames(queue<Mat> &frames, bool &stop)
                 Size labelSize = getTextSize(label, FONT_HERSHEY_DUPLEX, PRIMARY_LABEL_SCALE, thickness, &baseline);
 
                 // Calculate the position for the text background
-                Point textOrg(boxes[i].x, boxes[i].y + boxes[i].height + textSize.height);
+                Point textOrg(boxes[i].x + boxes[i].width - textSize.width - thickness, boxes[i].y + boxes[i].height - 5*thickness);
                 Point labelOrg(boxes[i].x, boxes[i].y - baseline - thickness);
 
                 // Draw the background rectangle for better visibility
@@ -348,7 +348,7 @@ void process_frames(queue<Mat> &frames, bool &stop)
                 putText(img, "id: " + to_string(i + 1), textOrg + Point(0, 3), FONT_HERSHEY_DUPLEX, SECONDARY_LABEL_SCALE, BLACK, thickness);
                 putText(img, label, labelOrg + Point(0, 2), FONT_HERSHEY_DUPLEX, PRIMARY_LABEL_SCALE, BLACK, thickness);
 
-                rectangle(img, boxes[i], boxColor, 2);
+                rectangle(img, boxes[i], boxColor, thickness);
             }
             auto t2 = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
@@ -455,9 +455,9 @@ int main(int argc, char **argv)
             Rect addButtonRect(50, 50, 150, 100);
             Rect removeButtonRect(200, 50, 150, 100);
             rectangle(frame1, addButtonRect, AVNET_GREEN, -1);
-            putText(frame1, "Add Slot", Point(75, 105), FONT_HERSHEY_SIMPLEX, 0.5, BLACK, 1, LINE_AA);
+            putText(frame1, "Add Slot", Point(65, 105), FONT_HERSHEY_SIMPLEX, NORMAL_FONT_SCALE, BLACK, 2, LINE_AA);
             rectangle(frame1, removeButtonRect, AVNET_COMPLEMENTARY, -1);
-            putText(frame1, "Remove Slot", Point(210, 105), FONT_HERSHEY_SIMPLEX, 0.5, BLACK, 1, LINE_AA);
+            putText(frame1, "Remove Slot", Point(210, 105), FONT_HERSHEY_SIMPLEX, NORMAL_FONT_SCALE, BLACK, 2, LINE_AA);
             imshow("Slot", frame1);
 
             setMouseCallback(
