@@ -48,7 +48,7 @@
 #include "PreRuntime.h"
 
 /* DRP-AI memory offset for model object file*/
-#define DRPAI_MEM_OFFSET            (0X38E0000)
+#define DRPAI_MEM_OFFSET (0X38E0000)
 
 using namespace cv;
 using namespace std;
@@ -56,7 +56,7 @@ using namespace std;
 namespace
 {
     const char *splash_screen = "spark_bg.png";
-    
+
     const auto WHITE = cv::Scalar(255, 255, 255);
     const auto BLACK = cv::Scalar(0, 0, 0);
 
@@ -95,11 +95,11 @@ int slot_id;
 MeraDrpRuntimeWrapper runtime;
 
 uint64_t drpaimem_addr_start = 0;
-bool runtime_status = false; 
+bool runtime_status = false;
 
 /**
  * Convert HWC format to CHW
-*/
+ */
 cv::Mat hwc2chw(const cv::Mat &image)
 {
     std::vector<cv::Mat> rgb_images;
@@ -112,6 +112,7 @@ cv::Mat hwc2chw(const cv::Mat &image)
     cv::hconcat(matArray, 3, flat_image);
     return flat_image;
 }
+
 /*****************************************
  * Function Name     : get_patches
  * Description       : Function for drawing bounding box for parking slot.
@@ -119,18 +120,18 @@ cv::Mat hwc2chw(const cv::Mat &image)
  *                         x = int number
  *                         y = int number
  ******************************************/
-
 void get_patches(int event, int x, int y, int flags, void *param)
-{   
-    cv::Mat frame_copy = img.clone();     
+{
+    cv::Mat frame_copy = img.clone();
     if (event == EVENT_LBUTTONDOWN)
-    {   drawing_box = true;
-        box_start = Point2f(x, y); 
+    {
+        drawing_box = true;
+        box_start = Point2f(x, y);
     }
-    else if (event ==  EVENT_MOUSEMOVE)
-    { 
-        if(drawing_box)
-        box_end = Point2f(x,y);
+    else if (event == EVENT_MOUSEMOVE)
+    {
+        if (drawing_box)
+            box_end = Point2f(x, y);
     }
     else if (event == EVENT_LBUTTONUP)
     {
@@ -142,19 +143,19 @@ void get_patches(int event, int x, int y, int flags, void *param)
         Rect box(box_start, box_end);
         boxes.push_back(box);
     }
-    if(drawing_box)
-    {    
+    if (drawing_box)
+    {
         rectangle(frame_copy, box_start, box_end, AVNET_COMPLEMENTARY, 2);
     }
     else if (!rect.empty())
-    {    
-        rectangle(frame_copy, rect, AVNET_COMPLEMENTARY,2);
+    {
+        rectangle(frame_copy, rect, AVNET_COMPLEMENTARY, 2);
     }
     for (int i = 0; i < boxes.size(); i++)
     {
-         rectangle(img, boxes[i], AVNET_COMPLEMENTARY, 2);
+        rectangle(img, boxes[i], AVNET_COMPLEMENTARY, 2);
     }
-    box_end = Point2f(x, y);   
+    box_end = Point2f(x, y);
     imshow("image", frame_copy);
 }
 /*****************************************
@@ -242,7 +243,7 @@ void removeButtonCallback(int, void *)
     }
     for (int i = indicesToRemove.size() - 1; i >= 0; i--)
     {
-        boxes.erase(boxes.begin() + indicesToRemove[i-1]);
+        boxes.erase(boxes.begin() + indicesToRemove[i - 1]);
     }
 }
 /*****************************************
@@ -286,7 +287,7 @@ void read_frames(const string &videoFile, queue<Mat> &frames, bool &stop)
 
 void process_frames(queue<Mat> &frames, bool &stop)
 {
-    
+
     Rect box;
     Mat patch1, patch_con, patch_norm, inp_img;
     while (!stop)
@@ -330,14 +331,14 @@ void process_frames(queue<Mat> &frames, bool &stop)
 
                 std::string label = (floatarr[0] > floatarr[1]) ? "taken" : "empty";
                 Scalar boxColor = (floatarr[0] > floatarr[1]) ? AVNET_COMPLEMENTARY : AVNET_GREEN;
-                
+
                 int baseline = 0;
                 int thickness = 2;
                 Size textSize = getTextSize("id: " + to_string(i + 1), FONT_HERSHEY_DUPLEX, SECONDARY_LABEL_SCALE, thickness, &baseline);
                 Size labelSize = getTextSize(label, FONT_HERSHEY_DUPLEX, PRIMARY_LABEL_SCALE, thickness, &baseline);
 
                 // Calculate the position for the text background
-                Point textOrg(boxes[i].x + boxes[i].width - textSize.width - thickness, boxes[i].y + boxes[i].height - 5*thickness);
+                Point textOrg(boxes[i].x + boxes[i].width - textSize.width - thickness, boxes[i].y + boxes[i].height - 5 * thickness);
                 Point labelOrg(boxes[i].x, boxes[i].y - baseline - thickness);
 
                 // Draw the background rectangle for better visibility
@@ -352,79 +353,77 @@ void process_frames(queue<Mat> &frames, bool &stop)
             }
             auto t2 = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-            putText(img, "DRP-AI Processing Time: " + to_string(duration) + " ms", Point(0, 20), FONT_HERSHEY_DUPLEX, NORMAL_FONT_SCALE, AVNET_GREEN, 2);
-            putText(img, "Press esc to go back", Point(0, 40), FONT_HERSHEY_DUPLEX, SECONDARY_LABEL_SCALE, AVNET_GREEN, 2);
+            putText(img, "DRP-AI Processing Time: " + to_string(duration) + " ms", Point(0, 20), FONT_HERSHEY_DUPLEX, NORMAL_FONT_SCALE, BLACK, 2);
+            putText(img, "Press esc to go back", Point(0, 40), FONT_HERSHEY_DUPLEX, SECONDARY_LABEL_SCALE, BLACK, 2);
 
-            if (waitKey(10)==27)// Wait for 'Esc' key press to stop inference window!!
-            {   
+            if (waitKey(10) == 27) // Wait for 'Esc' key press to stop inference window!!
+            {
                 stop = true;
                 destroyAllWindows();
                 break;
             }
-            
+
             imshow("SPARK", img);
         }
-        
     }
 }
 
 /*****************************************
-* Function Name : get_drpai_start_addr
-* Description   : Function to get the start address of DRPAImem.
-* Arguments     : -
-* Return value  : uint32_t = DRPAImem start address in 32-bit.
-******************************************/
+ * Function Name : get_drpai_start_addr
+ * Description   : Function to get the start address of DRPAImem.
+ * Arguments     : -
+ * Return value  : uint32_t = DRPAImem start address in 32-bit.
+ ******************************************/
 uint32_t get_drpai_start_addr()
 {
-    int fd  = 0;
+    int fd = 0;
     int ret = 0;
     drpai_data_t drpai_data;
 
     errno = 0;
 
     fd = open("/dev/drpai0", O_RDWR);
-    if (0 > fd )
+    if (0 > fd)
     {
         LOG(FATAL) << "[ERROR] Failed to open DRP-AI Driver : errno=" << errno;
         return NULL;
     }
 
     /* Get DRP-AI Memory Area Address via DRP-AI Driver */
-    ret = ioctl(fd , DRPAI_GET_DRPAI_AREA, &drpai_data);
+    ret = ioctl(fd, DRPAI_GET_DRPAI_AREA, &drpai_data);
     if (-1 == ret)
     {
-        LOG(FATAL) << "[ERROR] Failed to get DRP-AI Memory Area : errno=" << errno ;
+        LOG(FATAL) << "[ERROR] Failed to get DRP-AI Memory Area : errno=" << errno;
         return (uint32_t)NULL;
     }
 
     return drpai_data.address;
 }
 
-
 int main(int argc, char **argv)
 {
-    
+
     /*Load model_dir structure and its weight to runtime object */
     drpaimem_addr_start = get_drpai_start_addr();
 
     if (drpaimem_addr_start == (uint64_t)NULL)
     {
         /* Error notifications are output from function get_drpai_start_addr(). */
-	    fprintf(stderr, "[ERROR] Failed to get DRP-AI memory area start address. \n");
+        fprintf(stderr, "[ERROR] Failed to get DRP-AI memory area start address. \n");
         return -1;
     }
 
     // runtime_status = false
     runtime_status = runtime.LoadModel(model_dir, drpaimem_addr_start + DRPAI_MEM_OFFSET);
-    
-    if(!runtime_status)
+
+    if (!runtime_status)
     {
         fprintf(stderr, "[ERROR] Failed to load model. \n");
         return -1;
     }
 
     std::cout << "loaded model:" << model_dir << "\n";
-    
+
     if (argc == 1)
     {
         std::cout << "Loading from camera input...\n";
@@ -443,7 +442,7 @@ int main(int argc, char **argv)
     {
         Mat frame;
         frame = cv::imread(splash_screen);
-        cv::resize(frame, frame, cv::Size(1200,800));
+        cv::resize(frame, frame, cv::Size(1200, 800));
         if (add_slot_in_figure)
         {
             rectangle(frame, Point(415, 523), Point(565, 573), BLACK, -1);
