@@ -65,6 +65,10 @@ namespace
     const auto AVNET_COMPLEMENTARY = cv::Scalar(138, 48, 230);
     const auto OCCUPIED_COLOR = cv::Scalar(AVNET_GREEN);
     const auto UNOCCUPIED_COLOR = cv::Scalar(AVNET_COMPLEMENTARY);
+
+    const double NORMAL_FONT_SCALE = 1.0;
+    const double PRIMARY_LABEL_SCALE = NORMAL_FONT_SCALE;
+    const double SECONDARY_LABEL_SCALE = PRIMARY_LABEL_SCALE * 0.75;
 }
 
 /* Global variables */
@@ -323,30 +327,40 @@ void process_frames(queue<Mat> &frames, bool &stop)
                 {
                     floatarr[n] = data_ptr[n];
                 }
-                if (floatarr[0] > floatarr[1])
-                {
-                    putText(img, "id: " + to_string(i + 1), Point(boxes[i].x + 10, boxes[i].y - 10), FONT_HERSHEY_DUPLEX, 1.0, Scalar(255, 0, 0), 2);
-                    cv::rectangle(img, boxes[i], AVNET_COMPLEMENTARY, 2);
-                    cv::putText(img, "taken", Point(boxes[i].x - 10, boxes[i].y + boxes[i].height + 25), cv::FONT_HERSHEY_DUPLEX, 1, AVNET_COMPLEMENTARY, 2, false);
-                }
-                else
-                {
-                    putText(img, "id: " + to_string(i + 1), Point(boxes[i].x + 10, boxes[i].y - 10), FONT_HERSHEY_DUPLEX, 1.0, Scalar(255, 0, 0), 2);
-                    cv::rectangle(img, boxes[i], AVNET_GREEN, 2);
-                    cv::putText(img, "empty", Point(boxes[i].x + 10, boxes[i].y + boxes[i].height + 25), cv::FONT_HERSHEY_DUPLEX, 1, AVNET_GREEN, 2, false);
-                }
+
+                std::string label = (floatarr[0] > floatarr[1]) ? "taken" : "empty";
+                Scalar boxColor = (floatarr[0] > floatarr[1]) ? AVNET_COMPLEMENTARY : AVNET_GREEN;
+                
+                int baseline = 0;
+                int thickness = 2;
+                Size textSize = getTextSize("id: " + to_string(i + 1), FONT_HERSHEY_DUPLEX, SECONDARY_LABEL_SCALE, thickness, &baseline);
+                Size labelSize = getTextSize(label, FONT_HERSHEY_DUPLEX, PRIMARY_LABEL_SCALE, thickness, &baseline);
+
+                // Calculate the position for the text background
+                Point textOrg(boxes[i].x, boxes[i].y - baseline - thickness);
+                Point labelOrg(boxes[i].x, boxes[i].y + boxes[i].height + labelSize.height);
+                // Draw the background rectangle for better visibility
+                rectangle(img, textOrg + Point(0, baseline), textOrg + Point(textSize.width, -textSize.height), boxColor, FILLED);
+                rectangle(img, labelOrg + Point(0, baseline), labelOrg + Point(labelSize.width, -labelSize.height), boxColor, FILLED);
+                // Now draw the text over the rectangle
+                putText(img, "id: " + to_string(i + 1), textOrg + Point(0, 3), FONT_HERSHEY_DUPLEX, SECONDARY_LABEL_SCALE, BLACK, thickness);
+                putText(img, label, labelOrg + Point(0, 2), FONT_HERSHEY_DUPLEX, PRIMARY_LABEL_SCALE, BLACK, thickness);
+
+                rectangle(img, boxes[i], boxColor, 2);
             }
             auto t2 = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-            putText(img, "DRP-AI Processing Time(ms): " + to_string(duration), Point(img.cols - 380, img.rows - 07), FONT_HERSHEY_DUPLEX, .65, Scalar(255, 0, 0), 2);
+            putText(img, "DRP-AI Processing Time: " + to_string(duration) + " ms", Point(0, 20), FONT_HERSHEY_DUPLEX, NORMAL_FONT_SCALE, AVNET_GREEN, 2);
+            putText(img, "Press esc to go back", Point(0, 40), FONT_HERSHEY_DUPLEX, SECONDARY_LABEL_SCALE, AVNET_GREEN, 2);
 
             if (waitKey(10)==27)// Wait for 'Esc' key press to stop inference window!!
             {   
-            stop = true;
-            destroyAllWindows();
-            break;
+                stop = true;
+                destroyAllWindows();
+                break;
             }
-        imshow("SPARK", img);
+            
+            imshow("SPARK", img);
         }
         
     }
