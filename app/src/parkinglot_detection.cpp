@@ -69,6 +69,8 @@ namespace
     const double NORMAL_FONT_SCALE = 1.0;
     const double PRIMARY_LABEL_SCALE = NORMAL_FONT_SCALE;
     const double SECONDARY_LABEL_SCALE = PRIMARY_LABEL_SCALE * 0.75;
+
+    const int ESC_KEY = 27;
 }
 
 /* Global variables */
@@ -353,10 +355,27 @@ void process_frames(queue<Mat> &frames, bool &stop)
             }
             auto t2 = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-            putText(img, "DRP-AI Processing Time: " + to_string(duration) + " ms", Point(0, 20), FONT_HERSHEY_DUPLEX, NORMAL_FONT_SCALE, BLACK, 2);
-            putText(img, "Press esc to go back", Point(0, 40), FONT_HERSHEY_DUPLEX, SECONDARY_LABEL_SCALE, BLACK, 2);
 
-            if (waitKey(10) == 27) // Wait for 'Esc' key press to stop inference window!!
+            // Draw header
+            const std::string drp_header = "DRP-AI Processing Time: " + to_string(duration) + " ms";
+            const std::string esc_header = "Press esc to go back";
+
+            int thickness = 2;
+            int baseline_drp = 0;
+            int baseline_esc = 0;
+
+            const auto drp_header_size = getTextSize(drp_header, FONT_HERSHEY_DUPLEX, NORMAL_FONT_SCALE, thickness, &baseline_drp);
+            Point drp_header_org(0, 20);
+            const auto esc_header_size = getTextSize(esc_header, FONT_HERSHEY_DUPLEX, SECONDARY_LABEL_SCALE, thickness, &baseline_esc);
+            Point esc_header_org(0, 40);
+
+            rectangle(img, drp_header_org + Point(0, baseline_drp), drp_header_org + Point(drp_header_size.width, -drp_header_size.height), BLACK, FILLED);
+            rectangle(img, esc_header_org + Point(0, baseline_esc), esc_header_org + Point(esc_header_size.width, -esc_header_size.height), BLACK, FILLED);
+
+            putText(img, drp_header, drp_header_org, FONT_HERSHEY_DUPLEX, NORMAL_FONT_SCALE, WHITE, 2);
+            putText(img, esc_header, esc_header_org, FONT_HERSHEY_DUPLEX, SECONDARY_LABEL_SCALE, WHITE, 2);
+
+            if (waitKey(10) == ESC_KEY) // Wait for 'Esc' key press to stop inference window!!
             {
                 stop = true;
                 destroyAllWindows();
@@ -438,7 +457,8 @@ int main(int argc, char **argv)
     }
     namedWindow(app_name, WINDOW_NORMAL);
     resizeWindow(app_name, 1200, 800);
-    while (waitKey(1) != 'q')
+    int key = -1;
+    while ((key = waitKey(1)) != 'q' && key != ESC_KEY)
     {
         Mat frame;
         frame = cv::imread(splash_screen);
