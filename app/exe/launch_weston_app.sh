@@ -1,6 +1,6 @@
 #!/bin/bash
 
 (
-    cd /home/root/dev/exe || exit 1
+    cd /opt/spark/ || exit 1
     ./spark
 )
