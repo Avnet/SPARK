@@ -1,0 +1,3 @@
+[launcher]
+icon=/opt/spark/spark_icon.png
+path=/opt/spark/launch_weston_app.sh
