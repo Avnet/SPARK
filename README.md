@@ -3,8 +3,7 @@
 
 Welcome to SPARK, the edge-AI solution for smart EV charging and parking lot management. Bootstrapping your Edge AI with RZBoard and the [RZV AI SDK](https://renesas-rz.github.io/rzv_ai_sdk/2.10/).
 
-![SPARK](https://github.com/ljkeller/SPARK/assets/44109284/7083da41-0c51-46cc-8a47-4ca51f296b0a)
-
+![spark_inference_small](https://github.com/ljkeller/SPARK/assets/44109284/8fc8d117-3fa3-469b-b8f1-38e722c21ac1)
 
 ## Overview
 
@@ -19,26 +18,19 @@ SPARK is an effective EV charging prototype that integrates a real-time capable 
 
 ## Installation
 
-Detailed instructions on how to set up and install SPARK on your RZBoard will be provided here. **You are expected to build this from inside the RZBoard AI SDK, or deploy from a Release package**
+Looking to demo the software? Simply download and install from the [Release](https://github.com/ljkeller/SPARK/releases) instructions.
+
+**Want to build and modify the demo yourself? You'll have to run the [build script](https://github.com/ljkeller/SPARK/blob/main/build.sh) and/or [deploy script](https://github.com/ljkeller/SPARK/blob/main/deploy.sh) from within the [RZV AI SDK](https://renesas-rz.github.io/rzv_ai_sdk/2.10/)**
 
 ```bash
-# Example installation code
-git clone https://github.com/yourusername/SPARK.git
-cd SPARK
-# further installation instructions
-TODO!
+./build.sh && ./deploy.sh [board_ip]
 ```
 
-## Usage
+## Operation
 
-Provide a quick start guide or examples on how to use the system once installed.
+SPARK operation is as simple as clicking a button and dragging some boxes.
 
-```bash
-# Example usage code
-cd SPARK
-TODO
-# Add code snippets or command-line examples
-```
+https://github.com/ljkeller/SPARK/assets/44109284/018fd6be-5195-4834-81d6-2894c16b7f5f
 
 ## License
 
@@ -46,8 +38,7 @@ This project is licensed under the [MIT License](LICENSE) - see the [LICENSE.md]
 
 ## Acknowledgments
 
-- This project uses several open source libraries:
-TODO: ADD
+- This project wouldn't be possible without OpenCV and [RZV AI SDK](https://renesas-rz.github.io/rzv_ai_sdk/2.10/)!
 ---
 
 © 2024 Lucas Keller. All Rights Reserved.
