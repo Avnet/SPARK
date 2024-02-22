@@ -282,15 +282,25 @@ void read_frames(const string &videoFile, queue<Mat> &frames, bool &stop)
         cerr << "Failed " << videoFile << endl;
         return;
     }
-    Mat frame;
-    while (!stop)
+
+    try
     {
-        cap.read(frame);
-        if (frame.empty())
+        Mat frame;
+        while (!stop)
         {
-            break;
+            if (!cap.read(frame) || frame.empty())
+                throw new runtime_error("Failed to read frame from video file");
+
+            frames.push(frame);
         }
-        frames.push(frame);
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << e.what() << std::endl;
+
+        stop = true;
+        cap.release();
+        return;
     }
 }
 
