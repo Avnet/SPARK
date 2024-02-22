@@ -267,9 +267,16 @@ void read_frames(const string &videoFile, queue<Mat> &frames, bool &stop)
 {
     VideoCapture cap;
     if (filename == "0")
+    {
         cap.open(0);
+        cap.set(CAP_PROP_FRAME_WIDTH, 1920);
+        cap.set(CAP_PROP_FRAME_HEIGHT, 1080);
+    }
     else
+    {
         cap.open(videoFile);
+    }
+
     if (!cap.isOpened())
     {
         cerr << "Failed " << videoFile << endl;
@@ -292,6 +299,9 @@ void process_frames(queue<Mat> &frames, bool &stop)
 
     Rect box;
     Mat patch1, patch_con, patch_norm, inp_img;
+
+    namedWindow(app_name, WINDOW_NORMAL);
+    moveWindow(app_name, 0, 0);
     while (!stop)
     {
         if (!frames.empty())
@@ -382,7 +392,7 @@ void process_frames(queue<Mat> &frames, bool &stop)
                 break;
             }
 
-            imshow("SPARK", img);
+            imshow(app_name, img);
         }
     }
 }
