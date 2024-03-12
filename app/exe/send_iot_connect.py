@@ -262,19 +262,15 @@ def main():
                 # Sdk.GetAttributes(attributeDetails)
                 while True:
                     # Sdk.GetAttributes()
-
+                    # payload location: Germany for EW
                     payload = [
                         {
                             "uniqueId": UniqueId,
                             "time": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.000Z"),
                             "data": {
-                                "nut_count": random.randint(0, 8),
-                                "dt": 0,
-                                "defective_nut_count": random.randint(0, 2),
-                                "bolt_count": random.randint(0, 8),
-                                "defective_bolt_count": random.randint(0, 2),
-                                "bearing_count": random.randint(0, 8),
-                                "defective_bearing_count": random.randint(0, 2),
+                                "empty": random.randint(2, 8),
+                                "taken": random.randint(1, 6),
+                                "location": [49, 11]
                             },
                         }
                     ]
