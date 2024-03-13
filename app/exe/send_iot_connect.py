@@ -4,9 +4,9 @@ import sys
 import json
 import time
 import random
-from iotconnect import IoTConnectSDK
 from datetime import datetime
-import os
+
+from iotconnect import IoTConnectSDK
 
 """
 * ## Prerequisite parameters
@@ -34,7 +34,6 @@ SdkOptions = {
     "offlineStorage": {"disabled": False, "availSpaceInMb": 0.01, "fileCount": 5, "keepalive": 60},
     "skipValidation": False,
     # "devicePrimaryKey":"<<DevicePrimaryKey>>",
-    # As per your Environment(Azure or Azure EU or AWS) uncomment single URL and commnet("#") rest of URLs.
     "discoveryUrl": "",
     "IsDebug": True,
 }
@@ -71,13 +70,15 @@ except Exception as e:
 * Note: sdkOptions is optional but mandatory for SSL/x509 device authentication type only. Define proper setting or leave it NULL. If you not provide the offline storage it will set the default settings as per defined above. It may harm your device by storing the large data. Once memory get full may chance to stop the execution.
 """
 
-"""
- * Type    : Callback Function "DeviceCallback()"
- * Usage   : Firmware will receive commands from cloud. You can manage your business logic as per received command.
- * Input   :  
- * Output  : Receive device command, firmware command and other device initialize error response 
-"""
-def DeviceCallback(msg):
+
+def device_callback(msg):
+    """
+    * Type    : Callback Function "device_callback()"
+    * Usage   : Firmware will receive commands from cloud. You can manage your 
+    *           business logic as per received command.
+    * Input   :  
+    * Output  : Receive device command, firmware command and other device initialize error response 
+    """
     global Sdk
     print("\n--- Command Message Received in Firmware ---")
     print(json.dumps(msg))
@@ -86,16 +87,6 @@ def DeviceCallback(msg):
         cmdType = msg["ct"] if "ct" in msg else None
     # Other Command
     if cmdType == 0:
-        """
-        * Type    : Public Method "sendAck()"
-        * Usage   : Send device command received acknowledgment to cloud
-        *
-        * - status Type
-        *     st = 6; // Device command Ack status
-        *     st = 4; // Failed Ack
-        * - Message Type
-        *     msgType = 5; // for "0x01" device command
-        """
         data = msg
         if data != None:
             # print(data)
@@ -112,7 +103,7 @@ def DeviceCallback(msg):
     else:
         print("rule command", msg)
 
-def DeviceFirmwareCallback(msg):
+def device_firmware_callback(msg):
     global Sdk, device_list
     print("\n--- firmware Command Message Received ---")
     print(json.dumps(msg))
@@ -131,7 +122,7 @@ def DeviceFirmwareCallback(msg):
         *     msgType = 11; // for "0x02" Firmware command
         """
         data = msg
-        if data != None:
+        if data is not None:
             if ("urls" in data) and data["urls"]:
                 for url_list in data["urls"]:
                     if "tg" in url_list:
@@ -146,23 +137,23 @@ def DeviceFirmwareCallback(msg):
                         )  # Success=0, Failed = 1, Executed/DownloadingInProgress=2, Executed/DownloadDone=3, Failed/DownloadFailed=4
 
 
-def DeviceConectionCallback(msg):
-    cmdType = None
+def device_connection_callback(msg):
+    cmd_type = None
     if msg != None and len(msg.items()) != 0:
-        cmdType = msg["ct"] if msg["ct"] != None else None
+        cmd_type = msg["ct"] if msg["ct"] != None else None
     # connection status
-    if cmdType == 116:
+    if cmd_type == 116:
         # Device connection status e.g. data["command"] = true(connected) or false(disconnected)
         print(json.dumps(msg))
 
 
-"""
- * Type    : Callback Function "TwinUpdateCallback()"
- * Usage   : Manage twin properties as per business logic to update the twin reported property
- * Input   : 
- * Output  : Receive twin Desired and twin Reported properties
-"""
-def TwinUpdateCallback(msg):
+def twin_update_callback(msg):
+    """
+    * Type    : Callback Function "twin_update_callback()"
+    * Usage   : Manage twin properties as per business logic to update the twin reported property
+    * Input   : 
+    * Output  : Receive twin Desired and twin Reported properties
+    """
     global Sdk
     if msg:
         print("--- Twin Message Received ---")
@@ -172,97 +163,34 @@ def TwinUpdateCallback(msg):
                 if ("version" not in j) and ("uniqueId" not in j):
                     Sdk.UpdateTwin(j, msg["desired"][j])
 
-def sendBackToSDK(sdk, dataArray):
+def send_back_to_sdk(sdk, dataArray):
     sdk.SendData(dataArray)
     time.sleep(interval)
 
-def DirectMethodCallback1(msg, methodname, rId):
-    global Sdk, ACKdirect
+def device_change_callback(msg):
     print(msg)
-    print(methodname)
-    print(rId)
-    data = {"data": "succed"}
-    # return data,200,rId
-    ACKdirect.append({"data": data, "status": 200, "reqId": rId})
-    # Sdk.DirectMethodACK(data,200,rId)
-
-
-def DirectMethodCallback(msg, methodname, rId):
-    global Sdk, ACKdirect
-    print(msg)
-    print(methodname)
-    print(rId)
-    data = {"data": "fail"}
-    # return data,200,rId
-    ACKdirect.append({"data": data, "status": 200, "reqId": rId})
-    # Sdk.DirectMethodACK(data,200,rId)
-
-
-def DeviceChangCallback(msg):
-    print(msg)
-
-
-def InitCallback(response):
-    print(response)
-
-
-def delete_child_callback(msg):
-    print(msg)
-
-
-def create_child_callback(msg):
-    print(msg)
-
-
-def attributeDetails(data):
-    print("attribute received in firmware")
-    print(data)
-
 
 def main():
     global SId, SdkOptions, Sdk, ACKdirect, device_list
 
     try:
         """
-        if SdkOptions["certificate"]:
-            for prop in SdkOptions["certificate"]:
-                if os.path.isfile(SdkOptions["certificate"][prop]):
-                    pass
-                else:
-                    print("please give proper path")
-                    break
-        else:
-            print("you are not use auth type CA sign or self CA sign ")
-        """
-        """
         * Type    : Object Initialization "IoTConnectSDK()"
         * Usage   : To Initialize SDK and Device cinnection
-        * Input   : cpId, uniqueId, sdkOptions, env as explained above and DeviceCallback and TwinUpdateCallback is callback functions
+        * Input   : cpId, uniqueId, sdkOptions, env as explained above and device_callback and twin_update_callback is callback functions
         * Output  : Callback methods for device command and twin properties
         """
-        with IoTConnectSDK(UniqueId, SId, SdkOptions, DeviceConectionCallback) as Sdk:
+        with IoTConnectSDK(UniqueId, SId, SdkOptions, device_connection_callback) as Sdk:
             try:
-                """
-                * Type    : Public Method "GetAllTwins()"
-                * Usage   : Send request to get all the twin properties Desired and Reported
-                * Input   :
-                * Output  :
-                """
                 device_list = Sdk.Getdevice()
-                Sdk.onDeviceCommand(DeviceCallback)
-                Sdk.onTwinChangeCommand(TwinUpdateCallback)
-                Sdk.onOTACommand(DeviceFirmwareCallback)
-                Sdk.onDeviceChangeCommand(DeviceChangCallback)
+                Sdk.onDeviceCommand(device_callback)
+                Sdk.onTwinChangeCommand(twin_update_callback)
+                Sdk.onOTACommand(device_firmware_callback)
+                Sdk.onDeviceChangeCommand(device_change_callback)
                 Sdk.getTwins()
                 device_list = Sdk.Getdevice()
-                # Sdk.delete_child("childid",delete_child_callback)
-                # Sdk.createChildDevice("childid", "childtag", "childid", create_child_callback)
-                # Sdk.UpdateTwin("ss01","mmm")
-                # sdk.GetAllTwins()
-                # Sdk.GetAttributes(attributeDetails)
+
                 while True:
-                    # Sdk.GetAttributes()
-                    # payload location: Germany for EW
                     payload = [
                         {
                             "uniqueId": UniqueId,
@@ -275,13 +203,12 @@ def main():
                         }
                     ]
 
-                    # dataArray.append(dObj)
-                    print(payload)
-                    sendBackToSDK(Sdk, payload)
+                    print(f"Sending payload:{payload}")
+                    send_back_to_sdk(Sdk, payload)
 
             except KeyboardInterrupt:
-                print("Keyboard Interrupt Exception")
-                os.abort()
+                print("Keyboard Interrupt, exiting")
+                sys.exit(0)
 
     except Exception as ex:
         print(ex)
