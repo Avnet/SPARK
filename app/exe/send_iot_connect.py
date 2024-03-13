@@ -1,17 +1,19 @@
 """SPARK & IoTConnect Integration"""
 
 import json
+import socket
 import sys
 import time
 import random
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 from iotconnect import IoTConnectSDK
 
 class IoTConnectClient:
     """Send SPARK data to IoTConnect platform using IoTConnect SDK."""
     def __init__(self, config_path: str) -> None:
+        self.config = {}
         self.load_config(config_path)
         self.sdk_options = {
             "certificate": {
@@ -33,14 +35,32 @@ class IoTConnectClient:
         self.sdk = None
         self.device_list = []
 
-    def load_config(self, config_path: str) -> None:
+    def load_config(self, config_paths: List[str]) -> None:
         """Dependency inject client configuration"""
         try:
-            with open(config_path, encoding="utf-8") as f:
-                self.config = json.load(f)
+            for config_path in config_paths:
+                with open(config_path, encoding="utf-8") as f:
+                    # Load configuration from JSON file(s) with UNIQUE KEYS
+                    self.config.update(json.load(f))
+            print(f"Configuration loaded successfully {self.config}")
         except Exception as e:
             print(e)
             sys.exit(1)
+
+    def connect_spark_socket(self, retry_interval: int = 5) -> socket.socket:
+        """Attempt connection (continuously) to SPARK producer socket"""
+        while True:
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.connect((self.config['spark_socket_ipv4'], self.config['spark_socket_port']))
+                print("Connected to SPARK producer socket")
+                return sock
+            except ConnectionRefusedError:
+                print("Connection refused, retrying...")
+            except Exception as e:
+                print(f"An error occurred: {e}. Retrying...")
+            finally:
+                time.sleep(retry_interval)
 
     def device_callback(self, msg: Dict[str, Any]) -> None:
         print("\n--- Command Message Received in Firmware ---")
@@ -84,7 +104,7 @@ class IoTConnectClient:
                 self.sdk.onDeviceChangeCommand(self.device_connection_callback)
                 self.sdk.getTwins()
                 self.device_list = self.sdk.Getdevice()
-
+                socket = self.connect_spark_socket()
                 while True:
                     self.send_data()
                     time.sleep(self.sdk_options['transmit_interval_seconds'])
@@ -97,5 +117,5 @@ class IoTConnectClient:
             sys.exit(1)
 
 if __name__ == "__main__":
-    client = IoTConnectClient('/opt/SPARK/iot/secrets.json')
+    client = IoTConnectClient(['/opt/SPARK/iot/secrets.json', '/opt/SPARK/iot/config.json'])
     client.run_telemetry_continuously()
