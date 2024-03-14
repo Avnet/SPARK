@@ -55,8 +55,8 @@ class IoTConnectClient:
 
     def connect_spark_socket(self, retry_interval: int = 5) -> socket.socket:
         """Attempt connection (continuously) to SPARK producer socket"""
-        max_retry_backoff_s = 300
-        retry_backoff_s = 5
+        max_retry_backoff_s = 8
+        retry_backoff_s = 1
         while self.run_continuously:
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -89,12 +89,15 @@ class IoTConnectClient:
         if sock is None: 
             raise ConnectionError("SPARK producer socket not connected")
 
-        data = sock.recv(1024)
+        data = sock.recv(1024).decode('utf-8')
         if not data:
             raise ConnectionError("SPARK producer socket closing")
-
-        message = data.decode("utf-8").strip()
-        return tuple(map(int, message.split(",")))
+        
+        utilizations = data.split('\n')
+        print(f"Received data: {utilizations}")
+        util_list = utilizations[0].strip().split(',')
+        print(f"Utilization list: {util_list}")
+        return tuple(map(int, util_list))
 
     def device_callback(self, msg: Dict[str, Any]) -> None:
         print("\n--- Command Message Received in Firmware ---")
