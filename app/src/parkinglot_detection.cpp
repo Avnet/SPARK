@@ -218,7 +218,11 @@ void addButtonCallback(int, void *)
     cv::VideoCapture vid;
 redraw_rectangle:
     if (camera_input)
+    {
         vid.open(0);
+        vid.set(CAP_PROP_FRAME_WIDTH, 1920);
+        vid.set(CAP_PROP_FRAME_HEIGHT, 1080);
+    }
     else
         vid.open(filename);
     for (int frame = 0; frame < 10; frame++)
