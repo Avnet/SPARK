@@ -11,8 +11,8 @@ TARGET=$1
     set -ex
 
     scp -r ./app/exe/ "root@${TARGET}:/home/root/dev/"
-    ssh "root@${TARGET}" "mkdir -p /opt/spark"
-    scp ./app/iot/*.json "${TARGET}:/opt/SPARK/iot/"
+    ssh "root@${TARGET}" "mkdir -p /opt/spark/iot"
+    scp ./app/iot/*.json "${TARGET}:/opt/spark/iot/"
 
     set +ex
 )
