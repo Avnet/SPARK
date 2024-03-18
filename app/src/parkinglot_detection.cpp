@@ -42,6 +42,7 @@
 #include "opencv2/imgproc.hpp"
 #include "opencv2/highgui.hpp"
 #include <vector>
+#include <memory>
 #include <cmath>
 #include <queue>
 #include <thread>
@@ -71,6 +72,23 @@ namespace
     const double SECONDARY_LABEL_SCALE = PRIMARY_LABEL_SCALE * 0.75;
 
     const int ESC_KEY = 27;
+
+    void printMatInfo(const cv::Mat &mat)
+    {
+        // Print dimensions
+        std::cout << "Dimensions: " << mat.cols << " x " << mat.rows;
+        if (mat.channels() > 1)
+        {
+            std::cout << " x " << mat.channels();
+        }
+        std::cout << std::endl;
+
+        // Calculate and print memory size
+        size_t elementSize = mat.elemSize(); // Size of one matrix element in bytes
+        size_t totalElements = mat.total();  // Total number of elements
+        size_t totalSize = elementSize * totalElements;
+        std::cout << "Estimated Memory Size: " << totalSize << " bytes" << std::endl;
+    }
 }
 
 /* Global variables */
@@ -332,9 +350,10 @@ void process_frames(queue<Mat> &frames, bool &stop)
                 else
                     patch_con = inp_img;
                 cv::normalize(patch_con, patch_norm, 0, 1, cv::NORM_MINMAX, CV_32FC1);
-                float *temp_input = new float[patch_norm.total() * 3];
-                memcpy(temp_input, patch_norm.ptr<float>(), 3 * patch_norm.total() * sizeof(float));
-                runtime.SetInput(0, temp_input);
+
+                auto temp_input = std::unique_ptr<float[]>(new float[patch_norm.total() * 3]);
+                memcpy(temp_input.get(), patch_norm.ptr<float>(), 3 * patch_norm.total() * sizeof(float));
+                runtime.SetInput(0, temp_input.get());
                 runtime.Run();
                 auto output_num = runtime.GetNumOutput();
                 if (output_num != 1)
