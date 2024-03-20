@@ -53,51 +53,69 @@ class IoTConnectClient:
             print(e)
             sys.exit(1)
 
-    def connect_spark_socket(self, retry_interval: int = 5) -> socket.socket:
+    def get_spark_datagram_socket(self) -> socket.socket:
         """Attempt connection (continuously) to SPARK producer socket"""
         max_retry_backoff_s = 8
         retry_backoff_s = 1
+        sock = None
         while self.run_continuously:
             try:
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.connect((self.config['spark_socket_ipv4'], self.config['spark_socket_port']))
-                print("Connected to SPARK producer socket")
+                for addr in socket.getaddrinfo(self.config['spark_socket_ipv6'], self.config['spark_socket_port'], socket.AF_INET6, socket.SOCK_DGRAM, 0, socket.AI_PASSIVE):
+                    af, socktype, proto, _, sa = addr
+                    try:
+                        sock = socket.socket(af, socktype, proto)
+                        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    except OSError as msg:
+                        print(f"Socket init failed: {msg}. Retrying...")
+                        sock = None
+                        continue
+                    try:
+                        sock.bind(sa)
+                    except OSError as msg:
+                        print(f"Socket bind failed: {msg}. Retrying...")
+                        sock.close()
+                        sock = None
+                        continue
+                    # Success
+                    break
+
+                if sock is None:
+                    raise ConnectionError("Failed to create socket")
+
                 return sock
-            except ConnectionRefusedError:
-                print("Connection refused, retrying...")
             except SignalException:
                 sys.exit(0)
-            except Exception as e:
-                print(f"An error occurred: {e}. Retrying...")
-            finally:
+            except Exception as msg:
                 retry_backoff_s = min(max_retry_backoff_s, retry_backoff_s * 2)
                 time.sleep(retry_backoff_s)
+
 
     def setup_exit_handler(self) -> None:
         """Define exit conditions as application will typically run indefinitely"""
         signal.signal(signal.SIGINT, self.exit_handler)
         signal.signal(signal.SIGTERM, self.exit_handler)
-    
+
     def exit_handler(self, _sig, _frame) -> None:
         """Stop IoT/SPARK integration"""
         print("Exit signal detected. Exiting...")
         self.run_continuously = False
         raise SignalException("Exit signal detected")
-            
+
     def receive_spark_data(self, sock: socket.socket) -> (int, int):
         """Receive SPARK data from producer socket"""
-        if sock is None: 
+        if sock is None:
             raise ConnectionError("SPARK producer socket not connected")
 
-        data = sock.recv(1024).decode('utf-8')
-        if not data:
-            raise ConnectionError("SPARK producer socket closing")
+        return random.randint(0, 100), random.randint(0, 100)
+        # data = sock.recv(1024).decode('utf-8')
+        # if not data:
+        #     raise ConnectionError("SPARK producer socket closing")
         
-        utilizations = data.split('\n')
-        print(f"Received data: {utilizations}")
-        util_list = utilizations[0].strip().split(',')
-        print(f"Utilization list: {util_list}")
-        return tuple(map(int, util_list))
+        # utilizations = data.split('\n')
+        # print(f"Received data: {utilizations}")
+        # util_list = utilizations[0].strip().split(',')
+        # print(f"Utilization list: {util_list}")
+        # return tuple(map(int, util_list))
 
     def device_callback(self, msg: Dict[str, Any]) -> None:
         print("\n--- Command Message Received in Firmware ---")
@@ -145,7 +163,7 @@ class IoTConnectClient:
                     self.sdk.onDeviceChangeCommand(self.device_connection_callback)
                     self.sdk.getTwins()
                     self.device_list = self.sdk.Getdevice()
-                    spark_socket = self.connect_spark_socket()
+                    spark_socket = self.get_spark_datagram_socket()
                     while True:
                         empty, taken = self.receive_spark_data(spark_socket)
                         self.send_data(empty, taken)

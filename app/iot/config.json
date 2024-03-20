@@ -1,4 +1,4 @@
 {
-    "spark_socket_ipv4": "127.0.0.1",
+    "spark_socket_ipv6": "::1",
     "spark_socket_port": 50000
 }
