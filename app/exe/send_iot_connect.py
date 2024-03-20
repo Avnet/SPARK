@@ -159,5 +159,5 @@ class IoTConnectClient:
                 retry_backoff_s = min(max_retry_backoff_s, retry_backoff_s * 2)
 
 if __name__ == "__main__":
-    client = IoTConnectClient(['/opt/SPARK/iot/secrets.json', '/opt/SPARK/iot/config.json'])
+    client = IoTConnectClient(['/opt/spark/iot/secrets.json', '/opt/spark/iot/config.json'])
     client.run_telemetry_continuously()
