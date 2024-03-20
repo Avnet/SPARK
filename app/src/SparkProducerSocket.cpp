@@ -25,7 +25,6 @@ SparkProducerSocket::SparkProducerSocket(const std::string &hostname_ipv6, uint1
     int opt = 1;
     struct addrinfo hints, *p;
     int rv;
-    int numbytes;
 
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET6;
@@ -50,7 +49,7 @@ SparkProducerSocket::SparkProducerSocket(const std::string &hostname_ipv6, uint1
         {
             throw std::runtime_error("Setsockopt(SO_REUSEADDR) failed");
         }
-
+        spark_addrinfo = p;
         break;
     }
 
@@ -80,5 +79,21 @@ SparkProducerSocket::~SparkProducerSocket()
  */
 bool SparkProducerSocket::sendOccupancyData(const std::pair<int, int> &data)
 {
-    return false;
+    std::string payload = std::to_string(data.first) + "," + std::to_string(data.second) + "\n";
+
+    int total = 0;
+    int numbytes;
+    int bytes_remaining = payload.length();
+    while (total < payload.length())
+    {
+        numbytes = sendto(sockfd, payload.c_str() + total, bytes_remaining, 0, spark_addrinfo->ai_addr, spark_addrinfo->ai_addrlen);
+        if (numbytes == -1)
+        {
+            break;
+        }
+        total += numbytes;
+        bytes_remaining -= numbytes;
+    }
+
+    return numbytes == -1 ? false : true;
 }

@@ -16,5 +16,5 @@ private:
     int sockfd;
     std::string hostname_ipv6;
     uint16_t port;
-    struct addrinfo *servinfo;
+    struct addrinfo *servinfo, *spark_addrinfo;
 };
