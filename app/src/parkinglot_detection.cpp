@@ -448,14 +448,10 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
             if (producerSocket && transmission_countdown == 0)
             {
                 producerSocket->sendOccupancyData(std::make_pair(taken, empty));
-                std::cout << "Sent occupancy data: " << taken << ", " << empty << std::endl;
+                cout << "Sent occupancy data (taken, empty): " << taken << ", " << empty << endl;
             }
-            else
-            {
-                std::cout << "Not sending data. Transmission countdown: " << transmission_countdown << std::endl;
-                std::cout << "Producer socket status: " << (producerSocket ? "exists" : "does not exist") << std::endl;
-            }
-            transmission_countdown = transmission_countdown < 0 ? transmission_period_in_frames : transmission_countdown - 1;
+            transmission_countdown = transmission_countdown <= 0 ? transmission_period_in_frames : transmission_countdown - 1;
+            // TODO: do time-based transmission instead of frame-based
         }
     }
 }

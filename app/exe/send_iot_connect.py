@@ -171,6 +171,7 @@ class IoTConnectClient:
                         empty, taken = self.receive_taken_empty_spark_data(spark_socket)
                         self.send_data(empty, taken)
                         time.sleep(self.sdk_options['transmit_interval_seconds'])
+                        # TODO: improve transmit interval to be more accurate
             except SignalException:
                 sys.exit(0)
             # exponential backoff
