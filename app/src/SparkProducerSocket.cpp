@@ -57,6 +57,7 @@ SparkProducerSocket::SparkProducerSocket(const std::string &hostname_ipv6, uint1
     {
         throw std::runtime_error("Failed to create socket");
     }
+    std::cout << "SPARK producer socket created" << std::endl;
 }
 
 /**
@@ -74,7 +75,7 @@ SparkProducerSocket::~SparkProducerSocket()
 
 /**
  * @brief Sends occupancy data to the server.
- * @param data The data to be sent, represented as a pair of integers.
+ * @param data The data to be sent, represented as a pair of integers (taken, empty).
  * @return True if the data is sent successfully, false otherwise.
  */
 bool SparkProducerSocket::sendOccupancyData(const std::pair<int, int> &data)

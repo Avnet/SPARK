@@ -47,6 +47,9 @@
 #include <queue>
 #include <thread>
 #include "PreRuntime.h"
+#include <optional>
+
+#include "SparkProducerSocket.h"
 
 /* DRP-AI memory offset for model object file*/
 #define DRPAI_MEM_OFFSET (0X38E0000)
@@ -72,6 +75,8 @@ namespace
     const double SECONDARY_LABEL_SCALE = PRIMARY_LABEL_SCALE * 0.75;
 
     const int ESC_KEY = 27;
+
+    const uint8_t transmission_period_in_frames = 30;
 
     void printMatInfo(const cv::Mat &mat)
     {
@@ -326,7 +331,7 @@ void read_frames(const string &videoFile, queue<Mat> &frames, bool &stop)
     }
 }
 
-void process_frames(queue<Mat> &frames, bool &stop)
+void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProducerSocket> producerSocket)
 {
 
     Rect box;
@@ -334,6 +339,7 @@ void process_frames(queue<Mat> &frames, bool &stop)
 
     namedWindow(app_name, WINDOW_NORMAL);
     moveWindow(app_name, 0, 0);
+    int transmission_countdown = transmission_period_in_frames;
     while (!stop)
     {
         if (!frames.empty())
@@ -342,6 +348,7 @@ void process_frames(queue<Mat> &frames, bool &stop)
             Mat frame = frames.front();
             frames.pop();
             img = frame;
+            int taken = 0, empty = 0;
             for (int i = 0; i < boxes.size(); i++)
             {
                 box = boxes[i];
@@ -374,8 +381,20 @@ void process_frames(queue<Mat> &frames, bool &stop)
                     floatarr[n] = data_ptr[n];
                 }
 
-                std::string label = (floatarr[0] > floatarr[1]) ? "taken" : "empty";
-                Scalar boxColor = (floatarr[0] > floatarr[1]) ? AVNET_COMPLEMENTARY : AVNET_GREEN;
+                std::string label;
+                Scalar boxColor;
+                if (floatarr[0] > floatarr[1])
+                {
+                    taken++;
+                    label = "taken";
+                    boxColor = OCCUPIED_COLOR;
+                }
+                else
+                {
+                    empty++;
+                    label = "empty";
+                    boxColor = UNOCCUPIED_COLOR;
+                }
 
                 int baseline = 0;
                 int thickness = 2;
@@ -426,6 +445,17 @@ void process_frames(queue<Mat> &frames, bool &stop)
             }
 
             imshow(app_name, img);
+            if (producerSocket && transmission_countdown == 0)
+            {
+                producerSocket->sendOccupancyData(std::make_pair(taken, empty));
+                std::cout << "Sent occupancy data: " << taken << ", " << empty << std::endl;
+            }
+            else
+            {
+                std::cout << "Not sending data. Transmission countdown: " << transmission_countdown << std::endl;
+                std::cout << "Producer socket status: " << (producerSocket ? "exists" : "does not exist") << std::endl;
+            }
+            transmission_countdown = transmission_countdown < 0 ? transmission_period_in_frames : transmission_countdown - 1;
         }
     }
 }
@@ -467,6 +497,17 @@ int main(int argc, char **argv)
 
     /*Load model_dir structure and its weight to runtime object */
     drpaimem_addr_start = get_drpai_start_addr();
+
+    std::shared_ptr<SparkProducerSocket> producerSocket;
+    try
+    {
+        producerSocket = std::make_shared<SparkProducerSocket>("::1", 50000);
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << e.what() << std::endl;
+        producerSocket = nullptr;
+    }
 
     if (drpaimem_addr_start == (uint64_t)NULL)
     {
@@ -555,7 +596,7 @@ int main(int argc, char **argv)
             thread readThread(read_frames, filename, ref(frames), ref(stop));
             cout << "Waiting for read frames to add frames to buffer!" << endl;
             this_thread::sleep_for(std::chrono::seconds(0));
-            thread processThread(process_frames, ref(frames), ref(stop));
+            thread processThread(process_frames, ref(frames), ref(stop), producerSocket);
             cout << "Processing thread started......" << endl;
             waitKey(0);
             stop = false;

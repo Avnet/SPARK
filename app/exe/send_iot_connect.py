@@ -101,21 +101,24 @@ class IoTConnectClient:
         self.run_continuously = False
         raise SignalException("Exit signal detected")
 
-    def receive_spark_data(self, sock: socket.socket) -> (int, int):
+    
+    def receive_taken_empty_spark_data(self, sock: socket.socket) -> (int, int):
         """Receive SPARK data from producer socket"""
+        # return (taken, empty)
+        # Data comes over the wire as bytes('taken,empty\n') where taken, empty are integers
         if sock is None:
             raise ConnectionError("SPARK producer socket not connected")
 
-        return random.randint(0, 100), random.randint(0, 100)
-        # data = sock.recv(1024).decode('utf-8')
-        # if not data:
-        #     raise ConnectionError("SPARK producer socket closing")
+        # return random.randint(0, 100), random.randint(0, 100)
+        bytes_data, _addr = sock.recvfrom(1024)
+        if not bytes_data:
+            raise ConnectionError("SPARK producer socket closing")
         
-        # utilizations = data.split('\n')
-        # print(f"Received data: {utilizations}")
-        # util_list = utilizations[0].strip().split(',')
-        # print(f"Utilization list: {util_list}")
-        # return tuple(map(int, util_list))
+        # Assuming the c++ std::string is utf-8 compatible...
+        utilizations = bytes_data.decode('utf-8').split('\n')[0]
+        print(f"Received data: {utilizations}")
+        util_list = utilizations.split(',')
+        return tuple(map(int, util_list))
 
     def device_callback(self, msg: Dict[str, Any]) -> None:
         print("\n--- Command Message Received in Firmware ---")
@@ -165,7 +168,7 @@ class IoTConnectClient:
                     self.device_list = self.sdk.Getdevice()
                     spark_socket = self.get_spark_datagram_socket()
                     while True:
-                        empty, taken = self.receive_spark_data(spark_socket)
+                        empty, taken = self.receive_taken_empty_spark_data(spark_socket)
                         self.send_data(empty, taken)
                         time.sleep(self.sdk_options['transmit_interval_seconds'])
             except SignalException:
