@@ -2,19 +2,19 @@
 
 #include <string>
 #include <netinet/in.h>
+#include <netdb.h>
 
 class SparkProducerSocket
 {
 public:
-    SparkProducerSocket(const std::string &host, int port);
+    SparkProducerSocket(const std::string &hostname_ipv6, uint16_t port);
     ~SparkProducerSocket();
 
-    bool connectWithTimeout(int timeoutUSec);
-    bool sendData(const std::pair<int, int> &data);
+    bool sendOccupancyData(const std::pair<int, int> &data);
 
 private:
-    int sockfd, latestSockfd;
-    std::string host;
-    int port;
-    struct sockaddr_in serverAddr;
+    int sockfd;
+    std::string hostname_ipv6;
+    uint16_t port;
+    struct addrinfo *servinfo;
 };

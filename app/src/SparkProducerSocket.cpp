@@ -4,68 +4,59 @@
  */
 
 #include "SparkProducerSocket.h"
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <netdb.h>
 #include <iostream>
+#include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 /**
  * @brief Constructs a SparkProducerSocket object with the specified host (IPv4 dotted-decimal format) and port.
- * @param host The host address to connect to.
+ * @param hostname_ipv6 The host address to connect to.
  * @param port The port number to connect to.
  */
-SparkProducerSocket::SparkProducerSocket(const std::string &host, int port)
-    : sockfd(-1), host(host), port(port)
+SparkProducerSocket::SparkProducerSocket(const std::string &hostname_ipv6, uint16_t port)
+    : sockfd(-1), hostname_ipv6(hostname_ipv6), port(port)
 {
     int opt = 1;
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt));
+    struct addrinfo hints, *p;
+    int rv;
+    int numbytes;
 
-    if (sockfd < 0)
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET6;
+    hints.ai_socktype = SOCK_DGRAM;
+
+    if ((rv = getaddrinfo(hostname_ipv6.c_str(), std::to_string(port).c_str(), &hints, &servinfo)) != 0)
+    {
+        throw std::runtime_error("getaddrinfo: " + std::string(gai_strerror(rv)));
+    }
+
+    for (p = servinfo; p != NULL; p = p->ai_next)
+    {
+        if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1)
+        {
+            std::cerr << "Producer socket" << std::endl;
+            continue;
+        }
+
+        int yes = 1;
+        // Configure reusable port
+        if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1)
+        {
+            throw std::runtime_error("Setsockopt(SO_REUSEADDR) failed");
+        }
+
+        break;
+    }
+
+    if (p == NULL)
     {
         throw std::runtime_error("Failed to create socket");
-    }
-
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons(port);
-    if (inet_pton(AF_INET, host.c_str(), &serverAddr.sin_addr) <= 0)
-    {
-        throw std::runtime_error("Invalid socket address/Address not supported. Address: " + host);
-    }
-    if (bind(sockfd, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) == -1)
-    {
-        throw std::runtime_error("Failed to bind the socket");
-    }
-    if (listen(sockfd, 3) == -1)
-    {
-        throw std::runtime_error("Failed to listen on the socket");
-    }
-
-    fd_set set;
-    struct timeval timeout;
-
-    FD_ZERO(&set);
-    FD_SET(sockfd, &set);
-
-    // wait 50 ms for incoming connection
-    timeout.tv_sec = 0;
-    timeout.tv_usec = 50000; // 50 milliseconds
-    int rv = select(sockfd + 1, &set, NULL, NULL, &timeout);
-
-    if (rv == -1)
-    {
-        throw std::runtime_error("Error occurred while trying to select the socket");
-    }
-    else if (rv == 0)
-    {
-        throw std::runtime_error("Timeout occurred while trying to select the socket");
-    }
-    else
-    {
-        struct sockaddr_storage remoteAddr;
-        socklen_t remoteAddrSize = sizeof(remoteAddr);
-        latestSockfd = accept(sockfd, (struct sockaddr *)&remoteAddr, &remoteAddrSize);
     }
 }
 
@@ -74,6 +65,7 @@ SparkProducerSocket::SparkProducerSocket(const std::string &host, int port)
  */
 SparkProducerSocket::~SparkProducerSocket()
 {
+    freeaddrinfo(servinfo);
     if (sockfd >= 0)
     {
         std::cout << "Closing SPARK producer socket..." << std::endl;
@@ -82,21 +74,11 @@ SparkProducerSocket::~SparkProducerSocket()
 }
 
 /**
- * @brief Connects to the server with a timeout.
- * @param timeoutUSec The timeout value in microseconds.
- * @return True if the connection is successful, false otherwise.
- */
-bool SparkProducerSocket::connectWithTimeout(int timeoutUSec)
-{
-    return false;
-}
-
-/**
- * @brief Sends data to the server.
+ * @brief Sends occupancy data to the server.
  * @param data The data to be sent, represented as a pair of integers.
  * @return True if the data is sent successfully, false otherwise.
  */
-bool SparkProducerSocket::sendData(const std::pair<int, int> &data)
+bool SparkProducerSocket::sendOccupancyData(const std::pair<int, int> &data)
 {
     return false;
 }
