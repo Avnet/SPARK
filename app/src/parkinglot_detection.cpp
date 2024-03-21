@@ -43,6 +43,7 @@
 #include "opencv2/highgui.hpp"
 #include <vector>
 #include <memory>
+#include <chrono>
 #include <cmath>
 #include <queue>
 #include <thread>
@@ -76,7 +77,7 @@ namespace
 
     const int ESC_KEY = 27;
 
-    const uint8_t transmission_period_in_frames = 30;
+    const auto TRANSMISSION_PERIOD = std::chrono::seconds(7);
 
     void printMatInfo(const cv::Mat &mat)
     {
@@ -336,10 +337,9 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
 
     Rect box;
     Mat patch1, patch_con, patch_norm, inp_img;
-
+    auto next_send_time = std::chrono::system_clock::now();
     namedWindow(app_name, WINDOW_NORMAL);
     moveWindow(app_name, 0, 0);
-    int transmission_countdown = transmission_period_in_frames;
     while (!stop)
     {
         if (!frames.empty())
@@ -445,13 +445,16 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
             }
 
             imshow(app_name, img);
-            if (producerSocket && transmission_countdown == 0)
+            if (producerSocket && (std::chrono::system_clock::now() >= next_send_time))
             {
                 producerSocket->sendOccupancyData(std::make_pair(taken, empty));
                 cout << "Sent occupancy data (taken, empty): " << taken << ", " << empty << endl;
+                next_send_time = std::chrono::system_clock::now() + TRANSMISSION_PERIOD;
             }
-            transmission_countdown = transmission_countdown <= 0 ? transmission_period_in_frames : transmission_countdown - 1;
-            // TODO: do time-based transmission instead of frame-based
+            else
+            {
+                cout << "Time until next send: " << std::chrono::duration_cast<std::chrono::seconds>(next_send_time - std::chrono::system_clock::now()).count() << " seconds" << endl;
+            }
         }
     }
 }

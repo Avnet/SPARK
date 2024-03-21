@@ -113,7 +113,7 @@ class IoTConnectClient:
         bytes_data, _addr = sock.recvfrom(1024)
         if not bytes_data:
             raise ConnectionError("SPARK producer socket closing")
-        
+
         # Assuming the c++ std::string is utf-8 compatible...
         utilizations = bytes_data.decode('utf-8').split('\n')[0]
         print(f"Received data: {utilizations}")
@@ -167,11 +167,12 @@ class IoTConnectClient:
                     self.sdk.getTwins()
                     self.device_list = self.sdk.Getdevice()
                     spark_socket = self.get_spark_datagram_socket()
+                    next_transmit = time.time()
                     while True:
                         empty, taken = self.receive_taken_empty_spark_data(spark_socket)
-                        self.send_data(empty, taken)
-                        time.sleep(self.sdk_options['transmit_interval_seconds'])
-                        # TODO: improve transmit interval to be more accurate
+                        if time.time() > next_transmit:
+                            self.send_data(empty, taken)
+                            next_transmit = time.time() + self.sdk_options['transmit_interval_seconds']
             except SignalException:
                 sys.exit(0)
             # exponential backoff
