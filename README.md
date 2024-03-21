@@ -14,7 +14,7 @@ SPARK is an effective EV charging prototype that integrates a real-time capable 
 - **Real-Time Occupancy Detection**: Utilizing an efficient CNN, SPARK detects vehicle occupancy in real-time, ensuring accurate information on parking availability.
 - **User-Friendly Interface**: Easy-to-use interface demo interface: output data to HDMI for simple viewing. Or, integrate with IoT connect for bootstrapped dashboards.
 - **Sustainable Solution**: Promotes efficient energy use and supports the growing need for EV infrastructure.
-- **Scalable Architecture**: Designed to scale: one image could host up to 200 parking spots. Try adding more parking slots and/or images until your FPS requirement isn't met. Then, scale horizontally with more RZBoards connected to your IoT connect style HUB!
+- **Scalable Architecture**: Designed to scale: one image could host up to 200 parking spots. Try adding more parking slots and/or images until your FPS requirement isn't met. Then, scale horizontally with more RZBoards connected to your IoT Connect style HUB!
 
 ## Installation
 
@@ -34,7 +34,7 @@ https://github.com/ljkeller/SPARK/assets/44109284/018fd6be-5195-4834-81d6-2894c1
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE) - see the [LICENSE.md](LICENSE.md) file for details.
+This project is licensed under the [MIT License](LICENSE)
 
 ## Acknowledgments
 
