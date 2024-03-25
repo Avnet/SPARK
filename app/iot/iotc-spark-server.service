@@ -1,0 +1,14 @@
+[Unit]
+Description=SPARK IOT Connect occupancy server
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/spark/
+ExecStart=python3 /opt/spark/send_iot_connect.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+
+
