@@ -353,6 +353,7 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
             {
                 box = boxes[i];
                 patch1 = img(box);
+                // patch is 28x28x3
                 resize(patch1, patch1, Size(28, 28));
                 cvtColor(patch1, patch1, COLOR_BGR2RGB);
                 inp_img = hwc2chw(patch1);
@@ -361,10 +362,9 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
                 else
                     patch_con = inp_img;
                 cv::normalize(patch_con, patch_norm, 0, 1, cv::NORM_MINMAX, CV_32FC1);
+                // patch norm is a flat f32 array now
 
-                auto temp_input = std::unique_ptr<float[]>(new float[patch_norm.total() * 3]);
-                memcpy(temp_input.get(), patch_norm.ptr<float>(), 3 * patch_norm.total() * sizeof(float));
-                runtime.SetInput(0, temp_input.get());
+                runtime.SetInput(0, patch_norm.ptr<float>());
                 runtime.Run();
                 auto output_num = runtime.GetNumOutput();
                 if (output_num != 1)
@@ -437,7 +437,7 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
             putText(img, drp_header, drp_header_org, FONT_HERSHEY_DUPLEX, NORMAL_FONT_SCALE, WHITE, 2);
             putText(img, esc_header, esc_header_org, FONT_HERSHEY_DUPLEX, SECONDARY_LABEL_SCALE, WHITE, 2);
 
-            if (waitKey(10) == ESC_KEY) // Wait for 'Esc' key press to stop inference window!!
+            if (waitKey(3) == ESC_KEY) // Wait for 'Esc' key press to stop inference window!!
             {
                 stop = true;
                 destroyAllWindows();
