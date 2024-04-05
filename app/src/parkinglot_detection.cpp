@@ -95,6 +95,11 @@ namespace
         size_t totalSize = elementSize * totalElements;
         std::cout << "Estimated Memory Size: " << totalSize << " bytes" << std::endl;
     }
+
+    float float16_to_float32(uint16_t a)
+    {
+        return __extendXfYf2__<uint16_t, uint16_t, 10, float, uint32_t, 23>(a);
+    }
 }
 
 /* Global variables */
@@ -136,6 +141,38 @@ cv::Mat hwc2chw(const cv::Mat &image)
     cv::Mat matArray[] = {m_flat_r, m_flat_g, m_flat_b};
     cv::Mat flat_image;
     cv::hconcat(matArray, 3, flat_image);
+    return flat_image;
+}
+
+cv::Mat hwc2chwNormalized(const cv::Mat &image, const cv::Scalar &mean, const cv::Scalar &std) {
+    // Check if image is empty
+    if (image.empty()) {
+        std::cerr << "Input image is empty." << std::endl;
+        return cv::Mat();
+    }
+
+    // Convert image to floating point for processing
+    cv::Mat imageFloat;
+    image.convertTo(imageFloat, CV_32FC3, 1.0 / 255);
+
+    // Split the image into separate color channels
+    std::vector<cv::Mat> rgb_images;
+    cv::split(imageFloat, rgb_images);
+
+    // Normalize each channel
+    for (int i = 0; i < 3; ++i) {
+        rgb_images[i] = (rgb_images[i] - mean[i]) / std[i];
+    }
+
+    // Reshape each channel to a single row (flatten)
+    cv::Mat m_flat_r = rgb_images[0].reshape(1, 1);
+    cv::Mat m_flat_g = rgb_images[1].reshape(1, 1);
+    cv::Mat m_flat_b = rgb_images[2].reshape(1, 1);
+
+    // Concatenate the flattened channels into a single matrix
+    cv::Mat flat_image;
+    cv::vconcat(std::vector<cv::Mat>{m_flat_r, m_flat_g, m_flat_b}, flat_image);
+
     return flat_image;
 }
 
@@ -356,12 +393,56 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
                 // patch is 28x28x3
                 resize(patch1, patch1, Size(28, 28));
                 cvtColor(patch1, patch1, COLOR_BGR2RGB);
+		/*
+		std::cout << "rows: " << patch1.rows << " cols: " << patch1.cols << std::endl;
+		for (int i = 0; i < std::min(patch1.rows, 10); ++i) {
+        		for (int j = 0; j < std::min(patch1.cols, 10); ++j) {
+            			cv::Vec3b pixel = patch1.at<cv::Vec3b>(i, j);
+            			std::cout << "(" << (int)pixel[0] << ", " << (int)pixel[1] << ", " << (int)pixel[2] << ") ";
+        		}
+        		std::cout << std::endl;
+    		}
+		*/
+
+
                 inp_img = hwc2chw(patch1);
+		
+		//cv::Scalar mean_rgb(0.45956102, 0.44735131, 0.45625095);
+		//cv::Scalar std_rgb(0.1258209, 0.11932684, 0.11565641);
+		//inp_img = hwc2chwNormalized(patch1, mean_rgb, std_rgb);
                 if (!inp_img.isContinuous())
                     patch_con = inp_img.clone();
                 else
                     patch_con = inp_img;
-                cv::normalize(patch_con, patch_norm, 0, 1, cv::NORM_MINMAX, CV_32FC1);
+
+/*
+		for (int i = 0; i < std::min(patch_con.rows, 10); ++i) {
+        		for (int j = 0; j < std::min(patch_con.cols, 10); ++j) {
+            			cv::Vec3b pixel = patch_con.at<cv::Vec3f>(i, j);
+            			std::cout << "(" << (float)pixel[0] << ", " << (float)pixel[1] << ", " << (float)pixel[2] << ") ";
+        		}
+        		std::cout << std::endl;
+    		}
+
+		*/
+		/*
+		std::cout << "shape: " << patch_con.rows << ", " << patch_con.cols << ", " << patch_con.channels() << std::endl;
+		for (int j=0; j<patch_con.cols; j++) {
+			auto v = patch_con.at<uchar>(0, j);
+			std::cout << (int)v << " ";
+		}
+		std::cout << std::endl;
+
+		*/
+
+                //cv::normalize(patch_con, patch_norm, 0, 1, cv::NORM_MINMAX, CV_32FC1);
+		patch_con.convertTo(patch_norm, CV_32F, 1.0/255.0, 0);
+		/*
+		for (int j=0; j<patch_norm.cols; j++) {
+			auto v = patch_norm.at<float>(0, j);
+			std::cout << (float)v << " ";
+		}
+		*/
                 // patch norm is a flat f32 array now
 
                 runtime.SetInput(0, patch_norm.ptr<float>());
@@ -374,15 +455,50 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
                 }
                 auto output_buffer = runtime.GetOutput(0);
                 int64_t out_size = std::get<2>(output_buffer);
+		std::cout << "out_size: " << out_size << endl;
                 float floatarr[out_size];
-                float *data_ptr = reinterpret_cast<float *>(std::get<1>(output_buffer));
-                for (int n = 0; n < out_size; n++)
-                {
-                    floatarr[n] = data_ptr[n];
-                }
+
+		if (InOutDataType::FLOAT16 == std::get<0>(output_buffer))
+    		{
+        		std::cout << "Output data type : FP16." << std::endl;
+        		/* Extract data in FP16 <uint16_t>. */
+        		uint16_t *data_ptr = reinterpret_cast<uint16_t *>(std::get<1>(output_buffer));
+		
+        										/* Post-processing for FP16 */
+        		/* Cast FP16 output data to FP32. */
+        		for (int n = 0; n < out_size; n++)
+        		{
+            			floatarr[n] = float16_to_float32(data_ptr[n]);
+        		}
+    		}
+    		else if (InOutDataType::FLOAT32 == std::get<0>(output_buffer))
+    		{
+        		std::cout << "Output data type : FP32." << std::endl;
+        		/* Extract data in FP32 <float>. */
+        		float *data_ptr = reinterpret_cast<float *>(std::get<1>(output_buffer));
+        		/*Copy output data to buffer for post-processing. */
+        		for (int n = 0; n < out_size; n++)
+        		{
+            		floatarr[n] = data_ptr[n];
+        		}
+    		}
+    		else
+    		{
+        		std::cerr << "[ERROR] Output data type : not floating point type." << std::endl;
+        		/*End application*/
+			return;
+    		}
+
+                //float *data_ptr = reinterpret_cast<float *>(std::get<1>(output_buffer));
+                //for (int n = 0; n < out_size; n++)
+                //{
+                    //floatarr[n] = data_ptr[n];
+                //}
 
                 std::string label;
                 Scalar boxColor;
+		std::cout << "floatarr-0: " << floatarr[0] << std::endl;
+		std::cout << "floatarr-1: " << floatarr[1] << std::endl;
                 if (floatarr[0] > floatarr[1])
                 {
                     taken++;

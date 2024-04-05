@@ -210,10 +210,12 @@ std::tuple<InOutDataType, void *, int64_t> MeraDrpRuntimeWrapper::GetOutput(int 
     if (out.DataType().is_float() && out.DataType().bits() == 32)
     {
         data_type = InOutDataType::FLOAT32;
+	std::cout << "out f32" << std::endl;
     }
     else if (out.DataType().is_float() && out.DataType().bits() == 16)
     {
         data_type = InOutDataType::FLOAT16;
+	std::cout << "out f16" << std::endl;
     }
     return std::make_tuple(data_type, reinterpret_cast<void *>(out->data), out_size);
 }
