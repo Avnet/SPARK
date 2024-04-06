@@ -95,6 +95,11 @@ namespace
         size_t totalSize = elementSize * totalElements;
         std::cout << "Estimated Memory Size: " << totalSize << " bytes" << std::endl;
     }
+
+    float float16_to_float32(uint16_t a)
+    {
+        return __extendXfYf2__<uint16_t, uint16_t, 10, float, uint32_t, 23>(a);
+    }
 }
 
 /* Global variables */
@@ -136,6 +141,41 @@ cv::Mat hwc2chw(const cv::Mat &image)
     cv::Mat matArray[] = {m_flat_r, m_flat_g, m_flat_b};
     cv::Mat flat_image;
     cv::hconcat(matArray, 3, flat_image);
+    return flat_image;
+}
+
+cv::Mat hwc2chwNormalized(const cv::Mat &image, const cv::Scalar &mean, const cv::Scalar &std)
+{
+    // Check if image is empty
+    if (image.empty())
+    {
+        std::cerr << "Input image is empty." << std::endl;
+        return cv::Mat();
+    }
+
+    // Convert image to floating point for processing
+    cv::Mat imageFloat;
+    image.convertTo(imageFloat, CV_32FC3, 1.0 / 255);
+
+    // Split the image into separate color channels
+    std::vector<cv::Mat> rgb_images;
+    cv::split(imageFloat, rgb_images);
+
+    // Normalize each channel
+    for (int i = 0; i < 3; ++i)
+    {
+        rgb_images[i] = (rgb_images[i] - mean[i]) / std[i];
+    }
+
+    // Reshape each channel to a single row (flatten)
+    cv::Mat m_flat_r = rgb_images[0].reshape(1, 1);
+    cv::Mat m_flat_g = rgb_images[1].reshape(1, 1);
+    cv::Mat m_flat_b = rgb_images[2].reshape(1, 1);
+
+    // Concatenate the flattened channels into a single matrix
+    cv::Mat flat_image;
+    cv::vconcat(std::vector<cv::Mat>{m_flat_r, m_flat_g, m_flat_b}, flat_image);
+
     return flat_image;
 }
 
@@ -215,6 +255,7 @@ int draw_rectangle(void)
         return 0;
     }
 }
+
 /*****************************************
  * Function Name     : addButtonCallback
  * Description       : add slots to the boxes vector(user can draw bounding box)
@@ -243,6 +284,7 @@ redraw_rectangle:
     if (re_draw == true)
         goto redraw_rectangle;
 }
+
 /*****************************************
  * Function Name     : removeButtonCallback
  * Description       : remove slot from the boxes vector based on the user input(comma separated input)
@@ -357,13 +399,13 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
                 resize(patch1, patch1, Size(28, 28));
                 cvtColor(patch1, patch1, COLOR_BGR2RGB);
                 inp_img = hwc2chw(patch1);
+
                 if (!inp_img.isContinuous())
                     patch_con = inp_img.clone();
                 else
                     patch_con = inp_img;
-                cv::normalize(patch_con, patch_norm, 0, 1, cv::NORM_MINMAX, CV_32FC1);
-                // patch norm is a flat f32 array now
 
+                patch_con.convertTo(patch_norm, CV_32F, 1.0 / 255.0, 0);
                 runtime.SetInput(0, patch_norm.ptr<float>());
                 runtime.Run();
                 auto output_num = runtime.GetNumOutput();
@@ -375,15 +417,35 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
                 auto output_buffer = runtime.GetOutput(0);
                 int64_t out_size = std::get<2>(output_buffer);
                 float floatarr[out_size];
-                float *data_ptr = reinterpret_cast<float *>(std::get<1>(output_buffer));
-                for (int n = 0; n < out_size; n++)
+
+                if (InOutDataType::FLOAT16 == std::get<0>(output_buffer))
                 {
-                    floatarr[n] = data_ptr[n];
+                    /* Extract data in FP16 <uint16_t>. */
+                    uint16_t *data_ptr = reinterpret_cast<uint16_t *>(std::get<1>(output_buffer));
+
+                    /* Post-processing for FP16 */
+                    /* Cast FP16 output data to FP32. */
+                    for (int n = 0; n < out_size; n++)
+                    {
+                        floatarr[n] = float16_to_float32(data_ptr[n]);
+                    }
+                }
+                else if (InOutDataType::FLOAT32 == std::get<0>(output_buffer))
+                {
+                    /* Extract data in FP32 <float>. */
+                    float *data_ptr = reinterpret_cast<float *>(std::get<1>(output_buffer));
+                    /*Copy output data to buffer for post-processing. */
+                    std::copy(data_ptr, data_ptr + out_size, floatarr);
+                }
+                else
+                {
+                    std::cerr << "[ERROR] Output data type : not floating point type." << std::endl;
+                    return;
                 }
 
                 std::string label;
                 Scalar boxColor;
-                if (floatarr[0] > floatarr[1])
+                if (floatarr[0] < floatarr[1])
                 {
                     taken++;
                     label = "taken";
