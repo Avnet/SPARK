@@ -19,6 +19,7 @@ class IoTConnectClient:
     def __init__(self, config_path: str) -> None:
         self.config = {}
         self.load_config(config_path)
+        print(f"Configuration loaded: {self.config}")
         self.sdk_options = {
             "certificate": {
                 "SSLKeyPath": self.config['ssl']['keyPath'],
@@ -40,6 +41,7 @@ class IoTConnectClient:
         self.device_list = []
         self.setup_exit_handler()
         self.run_continuously = True
+        print("IoTConnect service initialized")
 
     def load_config(self, config_paths: List[str]) -> None:
         """Dependency inject client configuration"""
@@ -48,7 +50,6 @@ class IoTConnectClient:
                 with open(config_path, encoding="utf-8") as f:
                     # Load configuration from JSON file(s) with UNIQUE KEYS
                     self.config.update(json.load(f))
-            print(f"Configuration loaded successfully {self.config}")
         except Exception as e:
             print(e)
             sys.exit(1)
@@ -121,9 +122,35 @@ class IoTConnectClient:
         return tuple(map(int, util_list))
 
     def device_callback(self, msg: Dict[str, Any]) -> None:
-        print("\n--- Command Message Received in Firmware ---")
-        print("--- No further business logic implemented ---")
+        print("\n--- Device Callback ---")
         print(json.dumps(msg))
+        cmd_type = None
+        if msg is not None and len(msg.items()) != 0:
+            cmd_type = msg["ct"] if "ct"in msg else None
+        # Other Command
+        if cmd_type == 0:
+            """
+            * Type    : Public Method "sendAck()"
+            * Usage   : Send device command received acknowledgment to cloud
+            * 
+            * - status Type
+            *     st = 6; // Device command Ack status 
+            *     st = 4; // Failed Ack
+            * - Message Type
+            *     msgType = 5; // for "0x01" device command 
+            """
+            data=msg
+            if data is None:
+                #print(data)
+                if "id" in data:
+                    if "ack" in data and data["ack"]:
+                        self.sdk.sendAckCmd(data["ack"],7,"sucessfull",data["id"])  #fail=4,executed= 5,sucess=7,6=executedack
+                else:
+                    if "ack" in data and data["ack"]:
+                        self.sdk.sendAckCmd(data["ack"],7,"sucessfull") #fail=4,executed= 5,sucess=7,6=executedack
+        else:
+            print("rule command",msg)
+        
 
     def device_firmware_callback(self, msg: Dict[str, Any]) -> None:
         print("\n--- Firmware Command Message Received ---")
@@ -158,6 +185,7 @@ class IoTConnectClient:
         retry_backoff_s = 5
         while self.run_continuously:
             try:
+                print("Starting IoTConnect SDK")
                 with IoTConnectSDK(self.config['ids']['uniqueId'], self.config['ids']['sid'], self.sdk_options, self.device_connection_callback) as self.sdk:
                     self.device_list = self.sdk.Getdevice()
                     self.sdk.onDeviceCommand(self.device_callback)
@@ -168,6 +196,7 @@ class IoTConnectClient:
                     self.device_list = self.sdk.Getdevice()
                     spark_socket = self.get_spark_datagram_socket()
                     next_transmit = time.time()
+                    print("Sending telemetry data to IoTConnect")
                     while True:
                         empty, taken = self.receive_taken_empty_spark_data(spark_socket)
                         if time.time() > next_transmit:
@@ -177,7 +206,7 @@ class IoTConnectClient:
                 sys.exit(0)
             # exponential backoff
             except Exception as ex:
-                print(ex)
+                print(f'Backing off from {ex}')
                 time.sleep(retry_backoff_s)
                 retry_backoff_s = min(max_retry_backoff_s, retry_backoff_s * 2)
 
