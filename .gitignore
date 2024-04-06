@@ -36,3 +36,4 @@ spark
 **/secrets.json
 
 build/
+app/src/drp-ai_tvm.code-workspace
