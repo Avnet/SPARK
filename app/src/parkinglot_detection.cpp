@@ -222,7 +222,7 @@ void get_patches(int event, int x, int y, int flags, void *param)
         rectangle(img, boxes[i], AVNET_COMPLEMENTARY, 2);
     }
     box_end = Point2f(x, y);
-    imshow("image", frame_copy);
+    imshow("Draw boxes with mouse, press <esc> to return to inference", frame_copy);
 }
 /*****************************************
  * Function Name     : draw_rectangle
@@ -238,9 +238,9 @@ int draw_rectangle(void)
         putText(img, "id: " + to_string(i + 1), Point(boxes[i].x + 10, boxes[i].y - 10), FONT_HERSHEY_DUPLEX, 1.0, Scalar(255, 0, 0), 2);
     }
     unsigned int key = 0;
-    cv::namedWindow("image", cv::WINDOW_NORMAL);
-    cv::imshow("image", img);
-    cv::setMouseCallback("image", get_patches, &img);
+    cv::namedWindow("Draw boxes with mouse, press <esc> to return to inference", cv::WINDOW_NORMAL);
+    cv::imshow("Draw boxes with mouse, press <esc> to return to inference", img);
+    cv::setMouseCallback("Draw boxes with mouse, press <esc> to return to inference", get_patches, &img);
     key = cv::waitKey(0);
     std::cout << "key:" << key << "\n";
     if (key == 114) // Wait for 'r' key press to redraw!!
