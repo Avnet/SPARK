@@ -20,6 +20,7 @@ class IoTConnectClient:
         self.config = {}
         self.load_config(config_path)
         print(f"Configuration loaded: {self.config}")
+        # TODO: Put more of these options in the configuration file
         self.sdk_options = {
             "certificate": {
                 "SSLKeyPath": self.config['ssl']['keyPath'],
@@ -35,7 +36,7 @@ class IoTConnectClient:
             "skipValidation": False,
             "discoveryUrl": self.config['networking']['discoveryUrl'],
             "IsDebug": True,
-            "transmit_interval_seconds": 15,
+            "transmit_interval_seconds": 5
         }
         self.sdk = None
         self.device_list = []
