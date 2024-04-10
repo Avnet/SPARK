@@ -199,7 +199,7 @@ class IoTConnectClient:
                     next_transmit = time.time()
                     print("Sending telemetry data to IoTConnect")
                     while True:
-                        empty, taken = self.receive_taken_empty_spark_data(spark_socket)
+                        taken, empty = self.receive_taken_empty_spark_data(spark_socket)
                         if time.time() > next_transmit:
                             self.send_data(empty, taken)
                             next_transmit = time.time() + self.sdk_options['transmit_interval_seconds']
