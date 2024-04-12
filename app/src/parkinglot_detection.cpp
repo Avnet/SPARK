@@ -68,8 +68,8 @@ namespace
     // color-blind friendly palette
     const auto AVNET_GREEN = cv::Scalar(0, 206, 137);
     const auto AVNET_COMPLEMENTARY = cv::Scalar(138, 48, 230);
-    const auto OCCUPIED_COLOR = cv::Scalar(AVNET_GREEN);
-    const auto UNOCCUPIED_COLOR = cv::Scalar(AVNET_COMPLEMENTARY);
+    const auto OCCUPIED_COLOR = cv::Scalar(AVNET_COMPLEMENTARY);
+    const auto UNOCCUPIED_COLOR = cv::Scalar(AVNET_GREEN);
 
     const double NORMAL_FONT_SCALE = 1.0;
     const double PRIMARY_LABEL_SCALE = NORMAL_FONT_SCALE;
@@ -77,7 +77,7 @@ namespace
 
     const int ESC_KEY = 27;
 
-    const auto TRANSMISSION_PERIOD = std::chrono::seconds(7);
+    const auto TRANSMISSION_PERIOD = std::chrono::seconds(2);
 
     void printMatInfo(const cv::Mat &mat)
     {
