@@ -43,4 +43,4 @@ This project is licensed under the [MIT License](LICENSE)
 - This project wouldn't be possible without OpenCV and [RZV AI SDK](https://renesas-rz.github.io/rzv_ai_sdk/2.10/)!
 ---
 
-© 2024 Lucas Keller. All Rights Reserved.
+© 2024 Avnet. All Rights Reserved.
