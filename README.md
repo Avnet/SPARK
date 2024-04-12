@@ -18,8 +18,10 @@ SPARK is an effective EV charging prototype that integrates a real-time capable 
 
 ## Installation
 
+### Standalone Installer
 Looking to demo the software? Simply download and install from the [Release](https://github.com/ljkeller/SPARK/releases) instructions.
 
+### Development Installer
 **Want to build and modify the demo yourself? You'll have to run the [build script](https://github.com/ljkeller/SPARK/blob/main/build.sh) and/or [deploy script](https://github.com/ljkeller/SPARK/blob/main/deploy.sh) from within the [RZV AI SDK](https://renesas-rz.github.io/rzv_ai_sdk/2.10/)**
 
 ```bash
