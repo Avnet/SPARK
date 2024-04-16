@@ -3,16 +3,22 @@ set(CMAKE_CXX_STANDARD 17)
 project(smart_parking)
 set(TVM_ROOT $ENV{TVM_HOME})
 set(EXECUTABLE_OUTPUT_PATH "../../exe")
+
 find_package(OpenCV REQUIRED)
 include_directories( ${OpenCV_INCLUDE_DIRS} )
 include_directories(${TVM_ROOT}/include)
 include_directories(${TVM_ROOT}/3rdparty/dlpack/include)
 include_directories(${TVM_ROOT}/3rdparty/dmlc-core/include)
 include_directories(${TVM_ROOT}/3rdparty/compiler-rt)
+
+include_directories(${PROJECT_SOURCE_DIR}/utils)
+
 set(TVM_RUNTIME_LIB ${TVM_ROOT}/build_runtime/libtvm_runtime.so)
-set(SRC parkinglot_detection.cpp MeraDrpRuntimeWrapper.cpp SparkProducerSocket.cpp)
+set(SRC Spark.cpp utils/MeraDrpRuntimeWrapper.cpp utils/SparkProducerSocket.cpp utils/DiskUtils.cpp)
 set(EXE_NAME spark)
+
 add_executable(${EXE_NAME} ${SRC})
+
 target_include_directories(${EXE_NAME} PUBLIC ${OpenCV_INCLUDE_DIRS})
 target_link_libraries(${EXE_NAME} ${OpenCV_LIBS})
 target_link_libraries(${EXE_NAME} ${TVM_RUNTIME_LIB} -pthread) 

@@ -1,6 +1,7 @@
 /*
  * Original Code (C) Copyright Edgecortix, Inc. 2022
  * Modified Code (C) Copyright Renesas Electronics Corporation 2023
+ * Modified Code (C) Copyright Avnet
  *　
  *  *1 DRP-AI TVM is powered by EdgeCortix MERA™ Compiler Framework.
  *
@@ -51,6 +52,7 @@
 #include <optional>
 
 #include "SparkProducerSocket.h"
+#include "DiskUtils.h"
 
 /* DRP-AI memory offset for model object file*/
 #define DRPAI_MEM_OFFSET (0X38E0000)
