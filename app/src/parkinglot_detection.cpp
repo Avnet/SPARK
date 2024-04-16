@@ -61,12 +61,19 @@ using namespace std;
 namespace
 {
     const char *splash_screen = "spark_bg.png";
+    const std::string model_dir = "parking_model";
+    const std::string app_name = "SPARK";
 
     const std::string DRAG_MESSAGE = "Use left click+drag to select parking spaces";
     const std::string UNDO_MESSAGE = "Use right click to delete most recent parking space";
 
     const auto WHITE = cv::Scalar(255, 255, 255);
     const auto BLACK = cv::Scalar(0, 0, 0);
+
+    const auto BUTTON_1_TL = cv::Point(415, 523);
+    const auto BUTTON_1_BR = cv::Point(565, 573);
+    const auto BUTTON_2_TL = cv::Point(687, 523);
+    const auto BUTTON_2_BR = cv::Point(837, 573);
 
     // color-blind friendly palette
     const auto AVNET_GREEN = cv::Scalar(0, 206, 137);
@@ -143,11 +150,6 @@ bool start_inference_parking_slot = false;
 bool drawing_box = false;
 bool re_draw = false;
 bool camera_input = false;
-
-const std::string model_dir = "parking_model";
-const std::string app_name = "SPARK";
-
-int slot_id;
 
 MeraDrpRuntimeWrapper runtime;
 
@@ -270,8 +272,6 @@ void get_patches(int event, int x, int y, int flags, void *param)
  ******************************************/
 int draw_rectangle(void)
 {
-    slot_id = boxes.size();
-
     // Clone the image so we can mutate boxes array without leaving artifacts on img
     auto img_clone = img.clone();
     for (int i = 0; i < boxes.size(); i++)
@@ -363,16 +363,19 @@ void removeButtonCallback(int, void *)
     }
 }
 /*****************************************
- * Function Name     : mouse_callback_button_click
+ * Function Name     : main_window_mouse_callback
  * Description       : Slot Frame mouse callback(add slot and remove slot functionality).
  ******************************************/
-void mouse_callback_button_click(int event, int x, int y, int flags, void *userdata)
+void main_window_mouse_callback(int event, int x, int y, int flags, void *userdata)
 {
+    std::cout << "main_window_mouse_callback" << std::endl;
+    auto edit_slots_rect = Rect(BUTTON_1_TL, BUTTON_1_BR);
+    auto start_inference_rect = Rect(BUTTON_2_TL, BUTTON_2_BR);
     if (event == EVENT_LBUTTONDOWN)
     {
-        if (415 < x && x < 565 && 523 < y && y < 573)
+        if (edit_slots_rect.contains(Point(x, y)))
             add_slot_in_figure = true;
-        else if (687 < x && x < 837 && 523 < y && y < 573)
+        else if (start_inference_rect.contains(Point(x, y)))
             start_inference_parking_slot = true;
     }
 }
@@ -418,6 +421,10 @@ void read_frames(const string &videoFile, queue<Mat> &frames, bool &stop)
     }
 }
 
+/// @brief The primary business logic of the parking lot detection application
+/// @param frames The queue of VideoCapture frames to process
+/// @param stop The flag to stop the processing
+/// @param producerSocket The SparkProducerSocket to send occupancy data through
 void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProducerSocket> producerSocket)
 {
 
@@ -439,8 +446,8 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
             {
                 box = boxes[i];
                 patch1 = img(box);
-                // patch is 28x28x3
                 resize(patch1, patch1, Size(28, 28));
+                // patch is 28x28x3 (aka dont forget its BGR)
                 cvtColor(patch1, patch1, COLOR_BGR2RGB);
                 inp_img = hwc2chw(patch1);
 
@@ -449,6 +456,7 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
                 else
                     patch_con = inp_img;
 
+                // Replicate the 'ToTensor()' function in the PyTorch model
                 patch_con.convertTo(patch_norm, CV_32F, 1.0 / 255.0, 0);
                 runtime.SetInput(0, patch_norm.ptr<float>());
                 runtime.Run();
@@ -524,10 +532,8 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
             auto t2 = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
 
-            // Draw header
             const std::string drp_header = "DRP-AI Processing Time: " + to_string(duration) + " ms";
             const std::string esc_header = "Press esc to go back";
-
             display_header1_header2(img, drp_header, esc_header);
 
             if (waitKey(3) == ESC_KEY) // Wait for 'Esc' key press to stop inference window!!
@@ -639,35 +645,32 @@ int main(int argc, char **argv)
         Mat frame;
         frame = cv::imread(splash_screen);
         cv::resize(frame, frame, cv::Size(1200, 800));
+        auto edit_slots_frame = frame.clone();
         if (add_slot_in_figure)
         {
-            rectangle(frame, Point(415, 523), Point(565, 573), BLACK, -1);
-            putText(frame, "Edit Slots", Point(415 + (int)150 / 4, 553), FONT_HERSHEY_SIMPLEX, 0.5, BLACK, 1);
             add_slot_in_figure = false;
+
             destroyAllWindows();
-            namedWindow("Slot", WINDOW_NORMAL);
-            resizeWindow("Slot", 400, 400);
-            Rect addButtonRect(50, 50, 150, 100);
-            Rect removeButtonRect(200, 50, 150, 100);
-            rectangle(frame1, addButtonRect, AVNET_GREEN, -1);
-            putText(frame1, "Add Slot", Point(65, 105), FONT_HERSHEY_SIMPLEX, NORMAL_FONT_SCALE, BLACK, 2, LINE_AA);
-            rectangle(frame1, removeButtonRect, AVNET_COMPLEMENTARY, -1);
-            putText(frame1, "Remove Slot", Point(210, 105), FONT_HERSHEY_SIMPLEX, NORMAL_FONT_SCALE, BLACK, 2, LINE_AA);
-            imshow("Slot", frame1);
+            const std::string edit_slots_window = "Edit Slots";
+            namedWindow(edit_slots_window, WINDOW_NORMAL);
+
+            rectangle(edit_slots_frame, BUTTON_1_TL, BUTTON_1_BR, BLACK, -1);
+            putText(edit_slots_frame, "Add Slot", Point(415 + (int)150 / 4, 553), FONT_HERSHEY_SIMPLEX, 0.5, WHITE, 1);
+            imshow(edit_slots_window, edit_slots_frame);
 
             setMouseCallback(
-                "Slot", [](int event, int x, int y, int flags, void *userdata)
+                edit_slots_window, [](int event, int x, int y, int flags, void *userdata)
                 {
                 if (event == EVENT_LBUTTONDOWN) 
                 {
-                    Rect addButtonRect = Rect(50, 50, 150, 100);
-                    Rect removeButtonRect = Rect(200, 50, 150, 100);
+                    auto addButtonRect = Rect(BUTTON_1_TL, BUTTON_1_BR);
+                    // auto removeButtonRect = Rect(BUTTON_2_TL, BUTTON_2_BR);
                     if (addButtonRect.contains(Point(x, y))) 
                         addButtonCallback(0, 0);
-                    else if (removeButtonRect.contains(Point(x, y))) 
-                    removeButtonCallback(0, 0);
+                    // else if (removeButtonRect.contains(Point(x, y))) 
+                        // removeButtonCallback(0, 0);
                 } },
-                NULL);
+                nullptr);
             waitKey(0);
         }
         else
@@ -675,11 +678,11 @@ int main(int argc, char **argv)
             rectangle(frame, Point(415, 523), Point(565, 573), BLACK, -1);
             putText(frame, "Edit Slots", Point(415 + (int)150 / 4, 553), FONT_HERSHEY_SIMPLEX, 0.5, WHITE, 1);
         }
+
         if (start_inference_parking_slot)
         {
-            rectangle(frame, Point(687, 523), Point(900, 573), BLACK, -1);
-            putText(frame, "Start Inference", Point(687 + (int)150 / 4, 553), FONT_HERSHEY_SIMPLEX, 0.5, WHITE, 1);
             start_inference_parking_slot = false;
+
             destroyAllWindows();
             std::cout << "Running TVM runtime" << std::endl;
 
@@ -700,7 +703,7 @@ int main(int argc, char **argv)
             rectangle(frame, Point(687, 523), Point(900, 573), BLACK, -1);
             putText(frame, "Start Inference", Point(687 + (int)150 / 4, 553), FONT_HERSHEY_SIMPLEX, 0.5, WHITE, 1);
         }
-        setMouseCallback(app_name, mouse_callback_button_click);
+        setMouseCallback(app_name, main_window_mouse_callback);
         imshow(app_name, frame);
     }
     return 0;
