@@ -1,5 +1,7 @@
 #include <string>
 #include <iostream>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #include "DiskUtils.h"
 
@@ -8,7 +10,15 @@ namespace
     using namespace cv;
     using namespace std;
 
-    const std::string SPARK_ROIS_FILEPATH = "/opt/spark/rois.json";
+    bool createDirectory(const std::string &path)
+    {
+        // The permission for the new directory is set to 777
+        if (mkdir(path.c_str(), S_IRWXU | S_IRWXG | S_IRWXO) == -1)
+        {
+            return false;
+        }
+        return true;
+    }
 }
 
 namespace disk_utils
@@ -17,6 +27,14 @@ namespace disk_utils
     {
         try
         {
+            const std::string SPARK_ROIS_FILEPATH = "/opt/spark/data/rois.json";
+            auto a = createDirectory("/opt");
+            auto b = createDirectory("/opt/spark");
+            auto c = createDirectory("/opt/spark/data");
+            if (a && b && c)
+            {
+                std::cout << "Directories created successfully." << std::endl;
+            }
             // Overwrites if exists
             // filetype ending affects << operator
             FileStorage file(SPARK_ROIS_FILEPATH, FileStorage::WRITE);
