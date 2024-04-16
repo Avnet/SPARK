@@ -282,11 +282,12 @@ int draw_rectangle(void)
     display_header1_header2(img_clone, DRAG_MESSAGE, UNDO_MESSAGE);
 
     unsigned int key = 0;
-    cv::namedWindow("Draw boxes with mouse, press <esc> to return to inference", cv::WINDOW_NORMAL);
-    cv::imshow("Draw boxes with mouse, press <esc> to return to inference", img_clone);
-    cv::setMouseCallback("Draw boxes with mouse, press <esc> to return to inference", get_patches, nullptr);
+    const std::string draw_rect_window = "Draw boxes with mouse, press <esc> to return to inference";
+    cv::namedWindow(draw_rect_window, cv::WINDOW_NORMAL);
+    setWindowProperty(draw_rect_window, cv::WND_PROP_FULLSCREEN, cv::WINDOW_FULLSCREEN);
+    cv::imshow(draw_rect_window, img_clone);
+    cv::setMouseCallback(draw_rect_window, get_patches, nullptr);
     key = cv::waitKey(0);
-    std::cout << "key:" << key << "\n";
     if (key == 114) // Wait for 'r' key press to redraw!!
     {
         std::cout << "re-draw!!\n";
@@ -362,21 +363,25 @@ void removeButtonCallback(int, void *)
         boxes.erase(boxes.begin() + indicesToRemove[i - 1]);
     }
 }
+
 /*****************************************
  * Function Name     : main_window_mouse_callback
- * Description       : Slot Frame mouse callback(add slot and remove slot functionality).
+ * Description       : Handles edit slot / start inference state transitions/forwarding
  ******************************************/
 void main_window_mouse_callback(int event, int x, int y, int flags, void *userdata)
 {
-    std::cout << "main_window_mouse_callback" << std::endl;
     auto edit_slots_rect = Rect(BUTTON_1_TL, BUTTON_1_BR);
     auto start_inference_rect = Rect(BUTTON_2_TL, BUTTON_2_BR);
     if (event == EVENT_LBUTTONDOWN)
     {
         if (edit_slots_rect.contains(Point(x, y)))
+        {
             add_slot_in_figure = true;
+        }
         else if (start_inference_rect.contains(Point(x, y)))
+        {
             start_inference_parking_slot = true;
+        }
     }
 }
 
@@ -432,7 +437,7 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
     Mat patch1, patch_con, patch_norm, inp_img;
     auto next_send_time = std::chrono::system_clock::now();
     namedWindow(app_name, WINDOW_NORMAL);
-    moveWindow(app_name, 0, 0);
+    setWindowProperty(app_name, cv::WND_PROP_FULLSCREEN, cv::WINDOW_FULLSCREEN);
     while (!stop)
     {
         if (!frames.empty())
@@ -645,32 +650,10 @@ int main(int argc, char **argv)
         Mat frame;
         frame = cv::imread(splash_screen);
         cv::resize(frame, frame, cv::Size(1200, 800));
-        auto edit_slots_frame = frame.clone();
         if (add_slot_in_figure)
         {
             add_slot_in_figure = false;
-
-            destroyAllWindows();
-            const std::string edit_slots_window = "Edit Slots";
-            namedWindow(edit_slots_window, WINDOW_NORMAL);
-
-            rectangle(edit_slots_frame, BUTTON_1_TL, BUTTON_1_BR, BLACK, -1);
-            putText(edit_slots_frame, "Add Slot", Point(415 + (int)150 / 4, 553), FONT_HERSHEY_SIMPLEX, 0.5, WHITE, 1);
-            imshow(edit_slots_window, edit_slots_frame);
-
-            setMouseCallback(
-                edit_slots_window, [](int event, int x, int y, int flags, void *userdata)
-                {
-                if (event == EVENT_LBUTTONDOWN) 
-                {
-                    auto addButtonRect = Rect(BUTTON_1_TL, BUTTON_1_BR);
-                    // auto removeButtonRect = Rect(BUTTON_2_TL, BUTTON_2_BR);
-                    if (addButtonRect.contains(Point(x, y))) 
-                        addButtonCallback(0, 0);
-                    // else if (removeButtonRect.contains(Point(x, y))) 
-                        // removeButtonCallback(0, 0);
-                } },
-                nullptr);
+            addButtonCallback(0, 0);
             waitKey(0);
         }
         else
@@ -703,7 +686,7 @@ int main(int argc, char **argv)
             rectangle(frame, Point(687, 523), Point(900, 573), BLACK, -1);
             putText(frame, "Start Inference", Point(687 + (int)150 / 4, 553), FONT_HERSHEY_SIMPLEX, 0.5, WHITE, 1);
         }
-        setMouseCallback(app_name, main_window_mouse_callback);
+        setMouseCallback(app_name, main_window_mouse_callback, &add_slot_in_figure);
         imshow(app_name, frame);
     }
     return 0;
