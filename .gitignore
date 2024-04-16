@@ -34,6 +34,6 @@ spark
 
 # Personal files / secrets
 **/secrets.json
-
+.vscode/
 build/
 app/src/drp-ai_tvm.code-workspace

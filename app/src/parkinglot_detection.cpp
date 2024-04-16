@@ -62,6 +62,9 @@ namespace
 {
     const char *splash_screen = "spark_bg.png";
 
+    const std::string DRAG_MESSAGE = "Use left click+drag to select parking spaces";
+    const std::string UNDO_MESSAGE = "Use right click to delete most recent parking space";
+
     const auto WHITE = cv::Scalar(255, 255, 255);
     const auto BLACK = cv::Scalar(0, 0, 0);
 
@@ -99,6 +102,29 @@ namespace
     float float16_to_float32(uint16_t a)
     {
         return __extendXfYf2__<uint16_t, uint16_t, 10, float, uint32_t, 23>(a);
+    }
+
+    /// @brief Display header1 and header2 text on img as white text on on the black background
+    /// @param img img to write over
+    /// @param header1 Primary header
+    /// @param header2 Secondary header
+    void display_header1_header2(Mat &img, const std::string &header1, const std::string &header2)
+    {
+        int thickness = 2;
+        // out variables
+        int baseline_drp = 0;
+        int baseline_esc = 0;
+
+        const auto drp_header_size = getTextSize(header1, FONT_HERSHEY_DUPLEX, NORMAL_FONT_SCALE, thickness, &baseline_drp);
+        Point drp_header_org(0, 20);
+        const auto esc_header_size = getTextSize(header2, FONT_HERSHEY_DUPLEX, SECONDARY_LABEL_SCALE, thickness, &baseline_esc);
+        Point esc_header_org(0, 40);
+
+        rectangle(img, drp_header_org + Point(0, baseline_drp), drp_header_org + Point(drp_header_size.width, -drp_header_size.height), BLACK, FILLED);
+        rectangle(img, esc_header_org + Point(0, baseline_esc), esc_header_org + Point(esc_header_size.width, -esc_header_size.height), BLACK, FILLED);
+
+        putText(img, header1, drp_header_org, FONT_HERSHEY_DUPLEX, NORMAL_FONT_SCALE, WHITE, 2);
+        putText(img, header2, esc_header_org, FONT_HERSHEY_DUPLEX, SECONDARY_LABEL_SCALE, WHITE, 2);
     }
 }
 
@@ -227,10 +253,8 @@ void get_patches(int event, int x, int y, int flags, void *param)
         rectangle(frame_copy, box_start, box_end, AVNET_COMPLEMENTARY, 2);
     }
 
-    // Draw official boxes
-    // TODO: put white text on black bg
-    putText(frame_copy, "Use left click+drag to select parking spaces", Point(0, 20), FONT_HERSHEY_DUPLEX, NORMAL_FONT_SCALE, WHITE, 2);
-    putText(frame_copy, "Use right click to delete most recent parking space", Point(0, 40), FONT_HERSHEY_DUPLEX, SECONDARY_LABEL_SCALE, WHITE, 2);
+    // Draw complete/official boxes
+    display_header1_header2(frame_copy, DRAG_MESSAGE, UNDO_MESSAGE);
     for (int i = 0; i < boxes.size(); i++)
     {
         putText(frame_copy, "id: " + to_string(i + 1), boxes[i].tl(), FONT_HERSHEY_DUPLEX, 1.0, AVNET_COMPLEMENTARY, 2);
@@ -255,8 +279,7 @@ int draw_rectangle(void)
         rectangle(img_clone, boxes[i], AVNET_COMPLEMENTARY, 2);
         putText(img_clone, "id: " + to_string(i + 1), Point(boxes[i].x + 10, boxes[i].y - 10), FONT_HERSHEY_DUPLEX, 1.0, AVNET_COMPLEMENTARY, 2);
     }
-    putText(img_clone, "Use left click+drag to select parking spaces", Point(0, 20), FONT_HERSHEY_DUPLEX, NORMAL_FONT_SCALE, WHITE, 2);
-    putText(img_clone, "Use right click to delete most recent parking space", Point(0, 40), FONT_HERSHEY_DUPLEX, NORMAL_FONT_SCALE, WHITE, 2);
+    display_header1_header2(img_clone, DRAG_MESSAGE, UNDO_MESSAGE);
 
     unsigned int key = 0;
     cv::namedWindow("Draw boxes with mouse, press <esc> to return to inference", cv::WINDOW_NORMAL);
@@ -505,20 +528,7 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
             const std::string drp_header = "DRP-AI Processing Time: " + to_string(duration) + " ms";
             const std::string esc_header = "Press esc to go back";
 
-            int thickness = 2;
-            int baseline_drp = 0;
-            int baseline_esc = 0;
-
-            const auto drp_header_size = getTextSize(drp_header, FONT_HERSHEY_DUPLEX, NORMAL_FONT_SCALE, thickness, &baseline_drp);
-            Point drp_header_org(0, 20);
-            const auto esc_header_size = getTextSize(esc_header, FONT_HERSHEY_DUPLEX, SECONDARY_LABEL_SCALE, thickness, &baseline_esc);
-            Point esc_header_org(0, 40);
-
-            rectangle(img, drp_header_org + Point(0, baseline_drp), drp_header_org + Point(drp_header_size.width, -drp_header_size.height), BLACK, FILLED);
-            rectangle(img, esc_header_org + Point(0, baseline_esc), esc_header_org + Point(esc_header_size.width, -esc_header_size.height), BLACK, FILLED);
-
-            putText(img, drp_header, drp_header_org, FONT_HERSHEY_DUPLEX, NORMAL_FONT_SCALE, WHITE, 2);
-            putText(img, esc_header, esc_header_org, FONT_HERSHEY_DUPLEX, SECONDARY_LABEL_SCALE, WHITE, 2);
+            display_header1_header2(img, drp_header, esc_header);
 
             if (waitKey(3) == ESC_KEY) // Wait for 'Esc' key press to stop inference window!!
             {
