@@ -440,6 +440,12 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
     auto next_send_time = std::chrono::system_clock::now();
     namedWindow(app_name, WINDOW_NORMAL);
     setWindowProperty(app_name, cv::WND_PROP_FULLSCREEN, cv::WINDOW_FULLSCREEN);
+
+    if (!boxes.empty())
+    {
+        disk_utils::serializeROIs(boxes);
+    }
+
     while (!stop)
     {
         if (!frames.empty())
