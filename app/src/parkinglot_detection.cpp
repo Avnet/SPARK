@@ -188,6 +188,7 @@ cv::Mat hwc2chwNormalized(const cv::Mat &image, const cv::Scalar &mean, const cv
  ******************************************/
 void get_patches(int event, int x, int y, int flags, void *param)
 {
+    // clone the image so we can mutate boxes array without leaving artifacts on img
     cv::Mat frame_copy = img.clone();
     if (event == EVENT_LBUTTONDOWN)
     {
@@ -203,23 +204,37 @@ void get_patches(int event, int x, int y, int flags, void *param)
     {
         drawing_box = false;
         box_end = Point2f(x, y);
-        putText(img, "id: " + to_string(slot_id + 1), box_start, FONT_HERSHEY_DUPLEX, 1.0, BLACK, 2);
-        slot_id += 1;
-        rect = cv::Rect(box_start, box_end);
-        Rect box(box_start, box_end);
-        boxes.push_back(box);
+        auto new_rect = cv::Rect(box_start, box_end);
+
+        if (!new_rect.empty())
+        {
+            boxes.push_back(new_rect);
+            // putText(img, "id: " + to_string(boxes.size() + 1), box_start, FONT_HERSHEY_DUPLEX, 1.0, BLACK, 2);
+        }
     }
+    else if (event == EVENT_RBUTTONDOWN)
+    {
+        std::cout << "Right button clicked" << std::endl;
+        if (!boxes.empty())
+        {
+            boxes.pop_back();
+        }
+    }
+
+    // Draw in-progress box
     if (drawing_box)
     {
         rectangle(frame_copy, box_start, box_end, AVNET_COMPLEMENTARY, 2);
     }
-    else if (!rect.empty())
-    {
-        rectangle(frame_copy, rect, AVNET_COMPLEMENTARY, 2);
-    }
+
+    // Draw official boxes
+    // TODO: put white text on black bg
+    putText(frame_copy, "Use left click+drag to select parking spaces", Point(0, 20), FONT_HERSHEY_DUPLEX, NORMAL_FONT_SCALE, WHITE, 2);
+    putText(frame_copy, "Use right click to delete most recent parking space", Point(0, 40), FONT_HERSHEY_DUPLEX, SECONDARY_LABEL_SCALE, WHITE, 2);
     for (int i = 0; i < boxes.size(); i++)
     {
-        rectangle(img, boxes[i], AVNET_COMPLEMENTARY, 2);
+        putText(frame_copy, "id: " + to_string(i + 1), boxes[i].tl(), FONT_HERSHEY_DUPLEX, 1.0, AVNET_COMPLEMENTARY, 2);
+        rectangle(frame_copy, boxes[i], AVNET_COMPLEMENTARY, 2);
     }
     box_end = Point2f(x, y);
     imshow("Draw boxes with mouse, press <esc> to return to inference", frame_copy);
@@ -232,15 +247,21 @@ void get_patches(int event, int x, int y, int flags, void *param)
 int draw_rectangle(void)
 {
     slot_id = boxes.size();
+
+    // Clone the image so we can mutate boxes array without leaving artifacts on img
+    auto img_clone = img.clone();
     for (int i = 0; i < boxes.size(); i++)
     {
-        rectangle(img, boxes[i], AVNET_COMPLEMENTARY, 2);
-        putText(img, "id: " + to_string(i + 1), Point(boxes[i].x + 10, boxes[i].y - 10), FONT_HERSHEY_DUPLEX, 1.0, Scalar(255, 0, 0), 2);
+        rectangle(img_clone, boxes[i], AVNET_COMPLEMENTARY, 2);
+        putText(img_clone, "id: " + to_string(i + 1), Point(boxes[i].x + 10, boxes[i].y - 10), FONT_HERSHEY_DUPLEX, 1.0, AVNET_COMPLEMENTARY, 2);
     }
+    putText(img_clone, "Use left click+drag to select parking spaces", Point(0, 20), FONT_HERSHEY_DUPLEX, NORMAL_FONT_SCALE, WHITE, 2);
+    putText(img_clone, "Use right click to delete most recent parking space", Point(0, 40), FONT_HERSHEY_DUPLEX, NORMAL_FONT_SCALE, WHITE, 2);
+
     unsigned int key = 0;
     cv::namedWindow("Draw boxes with mouse, press <esc> to return to inference", cv::WINDOW_NORMAL);
-    cv::imshow("Draw boxes with mouse, press <esc> to return to inference", img);
-    cv::setMouseCallback("Draw boxes with mouse, press <esc> to return to inference", get_patches, &img);
+    cv::imshow("Draw boxes with mouse, press <esc> to return to inference", img_clone);
+    cv::setMouseCallback("Draw boxes with mouse, press <esc> to return to inference", get_patches, nullptr);
     key = cv::waitKey(0);
     std::cout << "key:" << key << "\n";
     if (key == 114) // Wait for 'r' key press to redraw!!
