@@ -61,9 +61,19 @@ using namespace std;
 namespace
 {
     const char *splash_screen = "spark_bg.png";
+    const std::string model_dir = "parking_model";
+    const std::string app_name = "SPARK";
+
+    const std::string DRAG_MESSAGE = "Use left click+drag to select parking spaces";
+    const std::string UNDO_MESSAGE = "Use right click to delete most recent parking space";
 
     const auto WHITE = cv::Scalar(255, 255, 255);
     const auto BLACK = cv::Scalar(0, 0, 0);
+
+    const auto BUTTON_1_TL = cv::Point(415, 523);
+    const auto BUTTON_1_BR = cv::Point(565, 573);
+    const auto BUTTON_2_TL = cv::Point(687, 523);
+    const auto BUTTON_2_BR = cv::Point(837, 573);
 
     // color-blind friendly palette
     const auto AVNET_GREEN = cv::Scalar(0, 206, 137);
@@ -100,6 +110,29 @@ namespace
     {
         return __extendXfYf2__<uint16_t, uint16_t, 10, float, uint32_t, 23>(a);
     }
+
+    /// @brief Display header1 and header2 text on img as white text on on the black background
+    /// @param img img to write over
+    /// @param header1 Primary header
+    /// @param header2 Secondary header
+    void display_header1_header2(Mat &img, const std::string &header1, const std::string &header2)
+    {
+        int thickness = 2;
+        // out variables
+        int baseline_drp = 0;
+        int baseline_esc = 0;
+
+        const auto drp_header_size = getTextSize(header1, FONT_HERSHEY_DUPLEX, NORMAL_FONT_SCALE, thickness, &baseline_drp);
+        Point drp_header_org(0, 20);
+        const auto esc_header_size = getTextSize(header2, FONT_HERSHEY_DUPLEX, SECONDARY_LABEL_SCALE, thickness, &baseline_esc);
+        Point esc_header_org(0, 40);
+
+        rectangle(img, drp_header_org + Point(0, baseline_drp), drp_header_org + Point(drp_header_size.width, -drp_header_size.height), BLACK, FILLED);
+        rectangle(img, esc_header_org + Point(0, baseline_esc), esc_header_org + Point(esc_header_size.width, -esc_header_size.height), BLACK, FILLED);
+
+        putText(img, header1, drp_header_org, FONT_HERSHEY_DUPLEX, NORMAL_FONT_SCALE, WHITE, 2);
+        putText(img, header2, esc_header_org, FONT_HERSHEY_DUPLEX, SECONDARY_LABEL_SCALE, WHITE, 2);
+    }
 }
 
 /* Global variables */
@@ -117,11 +150,6 @@ bool start_inference_parking_slot = false;
 bool drawing_box = false;
 bool re_draw = false;
 bool camera_input = false;
-
-const std::string model_dir = "parking_model";
-const std::string app_name = "SPARK";
-
-int slot_id;
 
 MeraDrpRuntimeWrapper runtime;
 
@@ -227,10 +255,8 @@ void get_patches(int event, int x, int y, int flags, void *param)
         rectangle(frame_copy, box_start, box_end, AVNET_COMPLEMENTARY, 2);
     }
 
-    // Draw official boxes
-    // TODO: put white text on black bg
-    putText(frame_copy, "Use left click+drag to select parking spaces", Point(0, 20), FONT_HERSHEY_DUPLEX, NORMAL_FONT_SCALE, WHITE, 2);
-    putText(frame_copy, "Use right click to delete most recent parking space", Point(0, 40), FONT_HERSHEY_DUPLEX, SECONDARY_LABEL_SCALE, WHITE, 2);
+    // Draw complete/official boxes
+    display_header1_header2(frame_copy, DRAG_MESSAGE, UNDO_MESSAGE);
     for (int i = 0; i < boxes.size(); i++)
     {
         putText(frame_copy, "id: " + to_string(i + 1), boxes[i].tl(), FONT_HERSHEY_DUPLEX, 1.0, AVNET_COMPLEMENTARY, 2);
@@ -246,8 +272,6 @@ void get_patches(int event, int x, int y, int flags, void *param)
  ******************************************/
 int draw_rectangle(void)
 {
-    slot_id = boxes.size();
-
     // Clone the image so we can mutate boxes array without leaving artifacts on img
     auto img_clone = img.clone();
     for (int i = 0; i < boxes.size(); i++)
@@ -255,15 +279,15 @@ int draw_rectangle(void)
         rectangle(img_clone, boxes[i], AVNET_COMPLEMENTARY, 2);
         putText(img_clone, "id: " + to_string(i + 1), Point(boxes[i].x + 10, boxes[i].y - 10), FONT_HERSHEY_DUPLEX, 1.0, AVNET_COMPLEMENTARY, 2);
     }
-    putText(img_clone, "Use left click+drag to select parking spaces", Point(0, 20), FONT_HERSHEY_DUPLEX, NORMAL_FONT_SCALE, WHITE, 2);
-    putText(img_clone, "Use right click to delete most recent parking space", Point(0, 40), FONT_HERSHEY_DUPLEX, NORMAL_FONT_SCALE, WHITE, 2);
+    display_header1_header2(img_clone, DRAG_MESSAGE, UNDO_MESSAGE);
 
     unsigned int key = 0;
-    cv::namedWindow("Draw boxes with mouse, press <esc> to return to inference", cv::WINDOW_NORMAL);
-    cv::imshow("Draw boxes with mouse, press <esc> to return to inference", img_clone);
-    cv::setMouseCallback("Draw boxes with mouse, press <esc> to return to inference", get_patches, nullptr);
+    const std::string draw_rect_window = "Draw boxes with mouse, press <esc> to return to inference";
+    cv::namedWindow(draw_rect_window, cv::WINDOW_NORMAL);
+    setWindowProperty(draw_rect_window, cv::WND_PROP_FULLSCREEN, cv::WINDOW_FULLSCREEN);
+    cv::imshow(draw_rect_window, img_clone);
+    cv::setMouseCallback(draw_rect_window, get_patches, nullptr);
     key = cv::waitKey(0);
-    std::cout << "key:" << key << "\n";
     if (key == 114) // Wait for 'r' key press to redraw!!
     {
         std::cout << "re-draw!!\n";
@@ -339,18 +363,25 @@ void removeButtonCallback(int, void *)
         boxes.erase(boxes.begin() + indicesToRemove[i - 1]);
     }
 }
+
 /*****************************************
- * Function Name     : mouse_callback_button_click
- * Description       : Slot Frame mouse callback(add slot and remove slot functionality).
+ * Function Name     : main_window_mouse_callback
+ * Description       : Handles edit slot / start inference state transitions/forwarding
  ******************************************/
-void mouse_callback_button_click(int event, int x, int y, int flags, void *userdata)
+void main_window_mouse_callback(int event, int x, int y, int flags, void *userdata)
 {
+    auto edit_slots_rect = Rect(BUTTON_1_TL, BUTTON_1_BR);
+    auto start_inference_rect = Rect(BUTTON_2_TL, BUTTON_2_BR);
     if (event == EVENT_LBUTTONDOWN)
     {
-        if (415 < x && x < 565 && 523 < y && y < 573)
+        if (edit_slots_rect.contains(Point(x, y)))
+        {
             add_slot_in_figure = true;
-        else if (687 < x && x < 837 && 523 < y && y < 573)
+        }
+        else if (start_inference_rect.contains(Point(x, y)))
+        {
             start_inference_parking_slot = true;
+        }
     }
 }
 
@@ -395,6 +426,10 @@ void read_frames(const string &videoFile, queue<Mat> &frames, bool &stop)
     }
 }
 
+/// @brief The primary business logic of the parking lot detection application
+/// @param frames The queue of VideoCapture frames to process
+/// @param stop The flag to stop the processing
+/// @param producerSocket The SparkProducerSocket to send occupancy data through
 void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProducerSocket> producerSocket)
 {
 
@@ -402,7 +437,7 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
     Mat patch1, patch_con, patch_norm, inp_img;
     auto next_send_time = std::chrono::system_clock::now();
     namedWindow(app_name, WINDOW_NORMAL);
-    moveWindow(app_name, 0, 0);
+    setWindowProperty(app_name, cv::WND_PROP_FULLSCREEN, cv::WINDOW_FULLSCREEN);
     while (!stop)
     {
         if (!frames.empty())
@@ -416,8 +451,8 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
             {
                 box = boxes[i];
                 patch1 = img(box);
-                // patch is 28x28x3
                 resize(patch1, patch1, Size(28, 28));
+                // patch is 28x28x3 (aka dont forget its BGR)
                 cvtColor(patch1, patch1, COLOR_BGR2RGB);
                 inp_img = hwc2chw(patch1);
 
@@ -426,6 +461,7 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
                 else
                     patch_con = inp_img;
 
+                // Replicate the 'ToTensor()' function in the PyTorch model
                 patch_con.convertTo(patch_norm, CV_32F, 1.0 / 255.0, 0);
                 runtime.SetInput(0, patch_norm.ptr<float>());
                 runtime.Run();
@@ -501,24 +537,9 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
             auto t2 = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
 
-            // Draw header
             const std::string drp_header = "DRP-AI Processing Time: " + to_string(duration) + " ms";
             const std::string esc_header = "Press esc to go back";
-
-            int thickness = 2;
-            int baseline_drp = 0;
-            int baseline_esc = 0;
-
-            const auto drp_header_size = getTextSize(drp_header, FONT_HERSHEY_DUPLEX, NORMAL_FONT_SCALE, thickness, &baseline_drp);
-            Point drp_header_org(0, 20);
-            const auto esc_header_size = getTextSize(esc_header, FONT_HERSHEY_DUPLEX, SECONDARY_LABEL_SCALE, thickness, &baseline_esc);
-            Point esc_header_org(0, 40);
-
-            rectangle(img, drp_header_org + Point(0, baseline_drp), drp_header_org + Point(drp_header_size.width, -drp_header_size.height), BLACK, FILLED);
-            rectangle(img, esc_header_org + Point(0, baseline_esc), esc_header_org + Point(esc_header_size.width, -esc_header_size.height), BLACK, FILLED);
-
-            putText(img, drp_header, drp_header_org, FONT_HERSHEY_DUPLEX, NORMAL_FONT_SCALE, WHITE, 2);
-            putText(img, esc_header, esc_header_org, FONT_HERSHEY_DUPLEX, SECONDARY_LABEL_SCALE, WHITE, 2);
+            display_header1_header2(img, drp_header, esc_header);
 
             if (waitKey(3) == ESC_KEY) // Wait for 'Esc' key press to stop inference window!!
             {
@@ -631,33 +652,8 @@ int main(int argc, char **argv)
         cv::resize(frame, frame, cv::Size(1200, 800));
         if (add_slot_in_figure)
         {
-            rectangle(frame, Point(415, 523), Point(565, 573), BLACK, -1);
-            putText(frame, "Edit Slots", Point(415 + (int)150 / 4, 553), FONT_HERSHEY_SIMPLEX, 0.5, BLACK, 1);
             add_slot_in_figure = false;
-            destroyAllWindows();
-            namedWindow("Slot", WINDOW_NORMAL);
-            resizeWindow("Slot", 400, 400);
-            Rect addButtonRect(50, 50, 150, 100);
-            Rect removeButtonRect(200, 50, 150, 100);
-            rectangle(frame1, addButtonRect, AVNET_GREEN, -1);
-            putText(frame1, "Add Slot", Point(65, 105), FONT_HERSHEY_SIMPLEX, NORMAL_FONT_SCALE, BLACK, 2, LINE_AA);
-            rectangle(frame1, removeButtonRect, AVNET_COMPLEMENTARY, -1);
-            putText(frame1, "Remove Slot", Point(210, 105), FONT_HERSHEY_SIMPLEX, NORMAL_FONT_SCALE, BLACK, 2, LINE_AA);
-            imshow("Slot", frame1);
-
-            setMouseCallback(
-                "Slot", [](int event, int x, int y, int flags, void *userdata)
-                {
-                if (event == EVENT_LBUTTONDOWN) 
-                {
-                    Rect addButtonRect = Rect(50, 50, 150, 100);
-                    Rect removeButtonRect = Rect(200, 50, 150, 100);
-                    if (addButtonRect.contains(Point(x, y))) 
-                        addButtonCallback(0, 0);
-                    else if (removeButtonRect.contains(Point(x, y))) 
-                    removeButtonCallback(0, 0);
-                } },
-                NULL);
+            addButtonCallback(0, 0);
             waitKey(0);
         }
         else
@@ -665,11 +661,11 @@ int main(int argc, char **argv)
             rectangle(frame, Point(415, 523), Point(565, 573), BLACK, -1);
             putText(frame, "Edit Slots", Point(415 + (int)150 / 4, 553), FONT_HERSHEY_SIMPLEX, 0.5, WHITE, 1);
         }
+
         if (start_inference_parking_slot)
         {
-            rectangle(frame, Point(687, 523), Point(900, 573), BLACK, -1);
-            putText(frame, "Start Inference", Point(687 + (int)150 / 4, 553), FONT_HERSHEY_SIMPLEX, 0.5, WHITE, 1);
             start_inference_parking_slot = false;
+
             destroyAllWindows();
             std::cout << "Running TVM runtime" << std::endl;
 
@@ -690,7 +686,7 @@ int main(int argc, char **argv)
             rectangle(frame, Point(687, 523), Point(900, 573), BLACK, -1);
             putText(frame, "Start Inference", Point(687 + (int)150 / 4, 553), FONT_HERSHEY_SIMPLEX, 0.5, WHITE, 1);
         }
-        setMouseCallback(app_name, mouse_callback_button_click);
+        setMouseCallback(app_name, main_window_mouse_callback, &add_slot_in_figure);
         imshow(app_name, frame);
     }
     return 0;
