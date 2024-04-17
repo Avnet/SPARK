@@ -608,6 +608,7 @@ int main(int argc, char **argv)
 
     /*Load model_dir structure and its weight to runtime object */
     drpaimem_addr_start = get_drpai_start_addr();
+    boxes = disk_utils::deserializeROIs();
 
     std::shared_ptr<SparkProducerSocket> producerSocket;
     try

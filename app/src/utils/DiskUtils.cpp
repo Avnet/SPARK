@@ -9,6 +9,7 @@ namespace
 {
     using namespace cv;
     using namespace std;
+    const std::string SPARK_ROIS_FILEPATH = "/opt/spark/data/rois.json";
 
     bool createDirectory(const std::string &path)
     {
@@ -27,7 +28,6 @@ namespace disk_utils
     {
         try
         {
-            const std::string SPARK_ROIS_FILEPATH = "/opt/spark/data/rois.json";
             auto a = createDirectory("/opt");
             auto b = createDirectory("/opt/spark");
             auto c = createDirectory("/opt/spark/data");
@@ -67,6 +67,44 @@ namespace disk_utils
         {
             std::cerr << "Failed to serialize ROIs. Unknown Exception." << std::endl;
             return false;
+        }
+    }
+
+    vector<Rect> deserializeROIs()
+    {
+        try
+        {
+            FileStorage file(SPARK_ROIS_FILEPATH, FileStorage::READ);
+            if (!file.isOpened())
+            {
+                std::cerr << "Failed to open file: " << SPARK_ROIS_FILEPATH << std::endl;
+                return {};
+            }
+
+            vector<Rect> rois;
+            FileNode roisNode = file["rois"];
+            for (FileNodeIterator it = roisNode.begin(); it != roisNode.end(); ++it)
+            {
+                Rect roi;
+                (*it)["roi"] >> roi;
+                rois.push_back(roi);
+            }
+            file.release();
+            if (!rois.empty())
+            {
+                std::cout << "ROIs read from disk." << std::endl;
+            }
+            return rois;
+        }
+        catch (std::exception &e)
+        {
+            std::cerr << "Failed to deserialize ROIs: " << e.what() << std::endl;
+            return {};
+        }
+        catch (...)
+        {
+            std::cerr << "Failed to deserialize ROIs. Unknown Exception." << std::endl;
+            return {};
         }
     }
 }
