@@ -53,6 +53,7 @@
 
 #include "SparkProducerSocket.h"
 #include "DiskUtils.h"
+#include "ParkingSlotStatus.h"
 
 /* DRP-AI memory offset for model object file*/
 #define DRPAI_MEM_OFFSET (0X38E0000)
