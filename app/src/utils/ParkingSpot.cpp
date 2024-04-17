@@ -1,3 +1,5 @@
+#include <chrono>
+
 #include "ParkingSpot.h"
 
 ParkingSpot::ParkingSpot(size_t slot_id, cv::Rect coords) : coords(coords), is_online(false), is_occupied(false), slot_id(slot_id), last_change_time(std::nullopt) {}
@@ -6,7 +8,18 @@ ParkingSpot::ParkingSpot(size_t slot_id, cv::Rect coords, bool is_online, bool i
 
 ParkingSpot::ParkingSpot(size_t slot_id, cv::Rect coords, bool is_online, bool is_occupied, TimePoint last_change_time) : coords(coords), is_online(is_online), is_occupied(is_occupied), slot_id(slot_id), last_change_time(last_change_time) {}
 
-std::ostream &operator<<(std::ostream &os, const ParkingSpot &status)
+void ParkingSpot::update_occupancy(bool is_occupied)
+{
+    this->is_online = true;
+    if (is_occupied != this->is_occupied)
+    {
+        this->is_occupied = is_occupied;
+        this->last_change_time = std::chrono::system_clock::now();
+    }
+}
+
+std::ostream &
+operator<<(std::ostream &os, const ParkingSpot &status)
 {
     os << "{"
        << "slot_id: " << status.slot_id << ", "

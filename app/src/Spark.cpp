@@ -457,9 +457,9 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
             frames.pop();
             img = frame;
             int taken = 0, empty = 0;
-            for (int i = 0; i < parking_spots.size(); i++)
+            for (auto &parking_spot : parking_spots)
             {
-                box = parking_spots[i].coords;
+                box = parking_spot.coords;
                 patch1 = img(box);
                 resize(patch1, patch1, Size(28, 28));
                 // patch is 28x28x3 (aka dont forget its BGR)
@@ -512,7 +512,8 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
 
                 std::string label;
                 Scalar boxColor;
-                if (floatarr[0] < floatarr[1])
+                const bool is_occupied = floatarr[0] < floatarr[1];
+                if (is_occupied)
                 {
                     taken++;
                     label = "taken";
@@ -524,25 +525,26 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
                     label = "empty";
                     boxColor = UNOCCUPIED_COLOR;
                 }
+                parking_spot.update_occupancy(is_occupied);
 
                 int baseline = 0;
                 int thickness = 2;
-                Size textSize = getTextSize("id: " + to_string(i + 1), FONT_HERSHEY_DUPLEX, SECONDARY_LABEL_SCALE, thickness, &baseline);
+                Size textSize = getTextSize("id: " + to_string(parking_spot.slot_id + 1), FONT_HERSHEY_DUPLEX, SECONDARY_LABEL_SCALE, thickness, &baseline);
                 Size labelSize = getTextSize(label, FONT_HERSHEY_DUPLEX, PRIMARY_LABEL_SCALE, thickness, &baseline);
 
                 // Calculate the position for the text background
-                Point textOrg(parking_spots[i].coords.x + parking_spots[i].coords.width - textSize.width - thickness, parking_spots[i].coords.y + parking_spots[i].coords.height - 5 * thickness);
-                Point labelOrg(parking_spots[i].coords.x, parking_spots[i].coords.y - baseline - thickness);
+                Point textOrg(parking_spot.coords.x + parking_spot.coords.width - textSize.width - thickness, parking_spot.coords.y + parking_spot.coords.height - 5 * thickness);
+                Point labelOrg(parking_spot.coords.x, parking_spot.coords.y - baseline - thickness);
 
                 // Draw the background rectangle for better visibility
                 rectangle(img, textOrg + Point(0, baseline), textOrg + Point(textSize.width, -textSize.height), boxColor, FILLED);
                 rectangle(img, labelOrg + Point(0, baseline), labelOrg + Point(labelSize.width, -labelSize.height), boxColor, FILLED);
 
                 // Now draw the text over the rectangle
-                putText(img, "id: " + to_string(i + 1), textOrg + Point(0, 3), FONT_HERSHEY_DUPLEX, SECONDARY_LABEL_SCALE, BLACK, thickness);
+                putText(img, "id: " + to_string(parking_spot.slot_id + 1), textOrg + Point(0, 3), FONT_HERSHEY_DUPLEX, SECONDARY_LABEL_SCALE, BLACK, thickness);
                 putText(img, label, labelOrg + Point(0, 2), FONT_HERSHEY_DUPLEX, PRIMARY_LABEL_SCALE, BLACK, thickness);
 
-                rectangle(img, parking_spots[i].coords, boxColor, thickness);
+                rectangle(img, parking_spot.coords, boxColor, thickness);
             }
             auto t2 = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
@@ -554,6 +556,11 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
             if (waitKey(3) == ESC_KEY) // Wait for 'Esc' key press to stop inference window!!
             {
                 stop = true;
+                for (auto &spot : parking_spots)
+                {
+                    spot.is_online = false;
+                }
+
                 destroyAllWindows();
                 break;
             }
