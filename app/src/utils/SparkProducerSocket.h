@@ -3,6 +3,9 @@
 #include <string>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <vector>
+
+#include "ParkingSpot.h"
 
 class SparkProducerSocket
 {
@@ -11,6 +14,7 @@ public:
     ~SparkProducerSocket();
 
     bool sendOccupancyData(const std::pair<int, int> &data);
+    bool sendOccupancyData(const std::vector<ParkingSpot> &data);
 
 private:
     int sockfd;
