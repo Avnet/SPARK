@@ -43,7 +43,7 @@ namespace
  * @param port The port number to connect to.
  */
 SparkProducerSocket::SparkProducerSocket(const std::string &hostname_ipv6, uint16_t port)
-    : sockfd(-1), hostname_ipv6(hostname_ipv6), port(port)
+    : sockfd(-1), hostname_ipv6(hostname_ipv6), port(port), servinfo(nullptr), spark_addrinfo(nullptr), last_telemetry_hash(0)
 {
     int opt = 1;
     struct addrinfo hints, *p;
@@ -106,6 +106,12 @@ bool SparkProducerSocket::sendOccupancyData(const std::pair<int, int> &data)
 {
     std::string payload = std::to_string(data.first) + "," + std::to_string(data.second) + "\n";
 
+    const auto cur_hash = std::hash<std::string>{}(payload);
+    if (cur_hash == last_telemetry_hash)
+    {
+        return false;
+    }
+
     int total = 0;
     int bytes_sent;
     int bytes_remaining = payload.length();
@@ -119,8 +125,12 @@ bool SparkProducerSocket::sendOccupancyData(const std::pair<int, int> &data)
         total += bytes_sent;
         bytes_remaining -= bytes_sent;
     }
-
-    return bytes_sent == -1 ? false : true;
+    bool success = bytes_sent != -1;
+    if (success)
+    {
+        last_telemetry_hash = cur_hash;
+    }
+    return success;
 }
 
 /// @brief Sends relevant telemetry to SPARK Datagram socket. If you have that socket configured with IoT connect, you can see the data in the IoT connect dashboard.
@@ -128,6 +138,7 @@ bool SparkProducerSocket::sendOccupancyData(const std::pair<int, int> &data)
 /// @return True if the data is sent successfully, false otherwise.
 bool SparkProducerSocket::sendOccupancyData(const std::vector<ParkingSpot> &data)
 {
+
     const auto taken = std::accumulate(begin(data), end(data), 0, [](const int &acc, const ParkingSpot &ps)
                                        { return acc + (ps.is_occupied ? 1 : 0); });
     const auto empty = data.size() - taken;
@@ -156,6 +167,13 @@ bool SparkProducerSocket::sendOccupancyData(const std::vector<ParkingSpot> &data
     int bytes_remaining = payload.str().length();
     // need to ensure lifetime of string is long enough to be sent ota
     const auto payload_str = payload.str();
+
+    const auto cur_hash = std::hash<std::string>{}(payload_str);
+    if (cur_hash == last_telemetry_hash)
+    {
+        return false;
+    }
+
     while (total < payload.str().length())
     {
         bytes_sent = sendto(sockfd, payload_str.c_str() + total, bytes_remaining, 0, spark_addrinfo->ai_addr, spark_addrinfo->ai_addrlen);
@@ -166,6 +184,10 @@ bool SparkProducerSocket::sendOccupancyData(const std::vector<ParkingSpot> &data
         total += bytes_sent;
         bytes_remaining -= bytes_sent;
     }
-
-    return bytes_sent == -1 ? false : true;
+    bool success = bytes_sent != -1;
+    if (success)
+    {
+        last_telemetry_hash = cur_hash;
+    }
+    return success;
 }

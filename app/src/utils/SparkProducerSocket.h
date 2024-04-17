@@ -21,4 +21,7 @@ private:
     std::string hostname_ipv6;
     uint16_t port;
     struct addrinfo *servinfo, *spark_addrinfo;
+    // using hash to avoid sending the same data multiple times
+    // If k1 == k2 is true, h(k1) == h(k2) is also true. (c++ standard)
+    std::size_t last_telemetry_hash;
 };
