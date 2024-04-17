@@ -50,10 +50,11 @@
 #include <thread>
 #include "PreRuntime.h"
 #include <optional>
+#include <utility> // for std::pair
 
 #include "SparkProducerSocket.h"
 #include "DiskUtils.h"
-#include "ParkingSlotStatus.h"
+#include "ParkingSpot.h"
 
 /* DRP-AI memory offset for model object file*/
 #define DRPAI_MEM_OFFSET (0X38E0000)
@@ -139,7 +140,7 @@ namespace
 }
 
 /* Global variables */
-vector<Rect> boxes;
+vector<ParkingSpot> parking_spots;
 
 Mat img;
 Mat frame1 = Mat::zeros(400, 400, CV_8UC3);
@@ -219,7 +220,7 @@ cv::Mat hwc2chwNormalized(const cv::Mat &image, const cv::Scalar &mean, const cv
  ******************************************/
 void get_patches(int event, int x, int y, int flags, void *param)
 {
-    // clone the image so we can mutate boxes array without leaving artifacts on img
+    // clone the image so we can mutate parking_spots array without leaving artifacts on img
     cv::Mat frame_copy = img.clone();
     if (event == EVENT_LBUTTONDOWN)
     {
@@ -239,16 +240,16 @@ void get_patches(int event, int x, int y, int flags, void *param)
 
         if (!new_rect.empty())
         {
-            boxes.push_back(new_rect);
-            // putText(img, "id: " + to_string(boxes.size() + 1), box_start, FONT_HERSHEY_DUPLEX, 1.0, BLACK, 2);
+            parking_spots.push_back(ParkingSpot(parking_spots.size() + 1, new_rect));
+            // putText(img, "id: " + to_string(parking_spots.size() + 1), box_start, FONT_HERSHEY_DUPLEX, 1.0, BLACK, 2);
         }
     }
     else if (event == EVENT_RBUTTONDOWN)
     {
         std::cout << "Right button clicked" << std::endl;
-        if (!boxes.empty())
+        if (!parking_spots.empty())
         {
-            boxes.pop_back();
+            parking_spots.pop_back();
         }
     }
 
@@ -258,15 +259,15 @@ void get_patches(int event, int x, int y, int flags, void *param)
         rectangle(frame_copy, box_start, box_end, AVNET_COMPLEMENTARY, 2);
     }
 
-    // Draw complete/official boxes
+    // Draw complete/official parking_spots
     display_header1_header2(frame_copy, DRAG_MESSAGE, UNDO_MESSAGE);
-    for (int i = 0; i < boxes.size(); i++)
+    for (int i = 0; i < parking_spots.size(); i++)
     {
-        putText(frame_copy, "id: " + to_string(i + 1), boxes[i].tl(), FONT_HERSHEY_DUPLEX, 1.0, AVNET_COMPLEMENTARY, 2);
-        rectangle(frame_copy, boxes[i], AVNET_COMPLEMENTARY, 2);
+        putText(frame_copy, "id: " + to_string(i + 1), parking_spots[i].coords.tl(), FONT_HERSHEY_DUPLEX, 1.0, AVNET_COMPLEMENTARY, 2);
+        rectangle(frame_copy, parking_spots[i].coords, AVNET_COMPLEMENTARY, 2);
     }
     box_end = Point2f(x, y);
-    imshow("Draw boxes with mouse, press <esc> to return to inference", frame_copy);
+    imshow("Draw parking_spots with mouse, press <esc> to return to inference", frame_copy);
 }
 /*****************************************
  * Function Name     : draw_rectangle
@@ -275,17 +276,17 @@ void get_patches(int event, int x, int y, int flags, void *param)
  ******************************************/
 int draw_rectangle(void)
 {
-    // Clone the image so we can mutate boxes array without leaving artifacts on img
+    // Clone the image so we can mutate parking_spots array without leaving artifacts on img
     auto img_clone = img.clone();
-    for (int i = 0; i < boxes.size(); i++)
+    for (int i = 0; i < parking_spots.size(); i++)
     {
-        rectangle(img_clone, boxes[i], AVNET_COMPLEMENTARY, 2);
-        putText(img_clone, "id: " + to_string(i + 1), Point(boxes[i].x + 10, boxes[i].y - 10), FONT_HERSHEY_DUPLEX, 1.0, AVNET_COMPLEMENTARY, 2);
+        rectangle(img_clone, parking_spots[i].coords, AVNET_COMPLEMENTARY, 2);
+        putText(img_clone, "id: " + to_string(i + 1), Point(parking_spots[i].coords.x + 10, parking_spots[i].coords.y - 10), FONT_HERSHEY_DUPLEX, 1.0, AVNET_COMPLEMENTARY, 2);
     }
     display_header1_header2(img_clone, DRAG_MESSAGE, UNDO_MESSAGE);
 
     unsigned int key = 0;
-    const std::string draw_rect_window = "Draw boxes with mouse, press <esc> to return to inference";
+    const std::string draw_rect_window = "Draw parking_spots with mouse, press <esc> to return to inference";
     cv::namedWindow(draw_rect_window, cv::WINDOW_NORMAL);
     setWindowProperty(draw_rect_window, cv::WND_PROP_FULLSCREEN, cv::WINDOW_FULLSCREEN);
     cv::imshow(draw_rect_window, img_clone);
@@ -306,7 +307,7 @@ int draw_rectangle(void)
 
 /*****************************************
  * Function Name     : addButtonCallback
- * Description       : add slots to the boxes vector(user can draw bounding box)
+ * Description       : add slots to the parking_spots vector(user can draw bounding box)
  ******************************************/
 void addButtonCallback(int, void *)
 {
@@ -335,7 +336,7 @@ redraw_rectangle:
 
 /*****************************************
  * Function Name     : removeButtonCallback
- * Description       : remove slot from the boxes vector based on the user input(comma separated input)
+ * Description       : remove slot from the parking_spots vector based on the user input(comma separated input)
  ******************************************/
 void removeButtonCallback(int, void *)
 {
@@ -363,7 +364,7 @@ void removeButtonCallback(int, void *)
     }
     for (int i = indicesToRemove.size() - 1; i >= 0; i--)
     {
-        boxes.erase(boxes.begin() + indicesToRemove[i - 1]);
+        parking_spots.erase(parking_spots.begin() + indicesToRemove[i - 1]);
     }
 }
 
@@ -442,9 +443,9 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
     namedWindow(app_name, WINDOW_NORMAL);
     setWindowProperty(app_name, cv::WND_PROP_FULLSCREEN, cv::WINDOW_FULLSCREEN);
 
-    if (!boxes.empty())
+    if (!parking_spots.empty())
     {
-        disk_utils::serializeROIs(boxes);
+        disk_utils::serializeROIs(parking_spots);
     }
 
     while (!stop)
@@ -456,9 +457,9 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
             frames.pop();
             img = frame;
             int taken = 0, empty = 0;
-            for (int i = 0; i < boxes.size(); i++)
+            for (int i = 0; i < parking_spots.size(); i++)
             {
-                box = boxes[i];
+                box = parking_spots[i].coords;
                 patch1 = img(box);
                 resize(patch1, patch1, Size(28, 28));
                 // patch is 28x28x3 (aka dont forget its BGR)
@@ -530,8 +531,8 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
                 Size labelSize = getTextSize(label, FONT_HERSHEY_DUPLEX, PRIMARY_LABEL_SCALE, thickness, &baseline);
 
                 // Calculate the position for the text background
-                Point textOrg(boxes[i].x + boxes[i].width - textSize.width - thickness, boxes[i].y + boxes[i].height - 5 * thickness);
-                Point labelOrg(boxes[i].x, boxes[i].y - baseline - thickness);
+                Point textOrg(parking_spots[i].coords.x + parking_spots[i].coords.width - textSize.width - thickness, parking_spots[i].coords.y + parking_spots[i].coords.height - 5 * thickness);
+                Point labelOrg(parking_spots[i].coords.x, parking_spots[i].coords.y - baseline - thickness);
 
                 // Draw the background rectangle for better visibility
                 rectangle(img, textOrg + Point(0, baseline), textOrg + Point(textSize.width, -textSize.height), boxColor, FILLED);
@@ -541,7 +542,7 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
                 putText(img, "id: " + to_string(i + 1), textOrg + Point(0, 3), FONT_HERSHEY_DUPLEX, SECONDARY_LABEL_SCALE, BLACK, thickness);
                 putText(img, label, labelOrg + Point(0, 2), FONT_HERSHEY_DUPLEX, PRIMARY_LABEL_SCALE, BLACK, thickness);
 
-                rectangle(img, boxes[i], boxColor, thickness);
+                rectangle(img, parking_spots[i].coords, boxColor, thickness);
             }
             auto t2 = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
@@ -609,7 +610,7 @@ int main(int argc, char **argv)
 
     /*Load model_dir structure and its weight to runtime object */
     drpaimem_addr_start = get_drpai_start_addr();
-    boxes = disk_utils::deserializeROIs();
+    parking_spots = disk_utils::deserializeROIs();
 
     std::shared_ptr<SparkProducerSocket> producerSocket;
     try
@@ -693,9 +694,9 @@ int main(int argc, char **argv)
         }
         else
         {
-            if (!boxes.empty())
+            if (!parking_spots.empty())
             {
-                const std::string slot_text = "Monitoring " + std::to_string(boxes.size()) + " slots";
+                const std::string slot_text = "Monitoring " + std::to_string(parking_spots.size()) + " slots";
                 int baseline_slot_text = 0;
                 const auto slot_text_size = getTextSize(slot_text, FONT_HERSHEY_SIMPLEX, SECONDARY_LABEL_SCALE, 2, &baseline_slot_text);
                 putText(frame, slot_text, BUTTON_2_TL - Point(0, baseline_slot_text), FONT_HERSHEY_SIMPLEX, SECONDARY_LABEL_SCALE, BLACK, 2);

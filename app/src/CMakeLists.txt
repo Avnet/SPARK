@@ -14,7 +14,7 @@ include_directories(${TVM_ROOT}/3rdparty/compiler-rt)
 include_directories(${PROJECT_SOURCE_DIR}/utils)
 
 set(TVM_RUNTIME_LIB ${TVM_ROOT}/build_runtime/libtvm_runtime.so)
-set(SRC Spark.cpp utils/MeraDrpRuntimeWrapper.cpp utils/SparkProducerSocket.cpp utils/DiskUtils.cpp utils/ParkingSlotStatus.cpp)
+set(SRC Spark.cpp utils/MeraDrpRuntimeWrapper.cpp utils/SparkProducerSocket.cpp utils/DiskUtils.cpp utils/ParkingSpot.cpp)
 set(EXE_NAME spark)
 
 add_executable(${EXE_NAME} ${SRC})
