@@ -1,10 +1,110 @@
+#include <string>
+#include <iostream>
+#include <sys/types.h>
+#include <sys/stat.h>
+
 #include "DiskUtils.h"
 
-namespace disc_utils
+namespace
 {
-    std::vector<cv::Mat> test()
+    using namespace cv;
+    using namespace std;
+    const std::string SPARK_ROIS_FILEPATH = "/opt/spark/data/rois.json";
+
+    bool createDirectory(const std::string &path)
     {
-        std::vector<cv::Mat> images;
-        return images;
+        // The permission for the new directory is set to 777
+        if (mkdir(path.c_str(), S_IRWXU | S_IRWXG | S_IRWXO) == -1)
+        {
+            return false;
+        }
+        return true;
+    }
+}
+
+namespace disk_utils
+{
+    bool serializeROIs(const std::vector<cv::Rect> &rois)
+    {
+        try
+        {
+            auto a = createDirectory("/opt");
+            auto b = createDirectory("/opt/spark");
+            auto c = createDirectory("/opt/spark/data");
+            if (a && b && c)
+            {
+                std::cout << "Directories created successfully." << std::endl;
+            }
+            // Overwrites if exists
+            // filetype ending affects << operator
+            FileStorage file(SPARK_ROIS_FILEPATH, FileStorage::WRITE);
+            if (!file.isOpened())
+            {
+                std::cerr << "Failed to open file: " << SPARK_ROIS_FILEPATH << std::endl;
+                return false;
+            }
+
+            file << "rois"
+                 << "[";
+            for (const auto &roi : rois)
+            {
+                // {: means compact form
+                file << "{:"
+                     << "roi"
+                     << roi
+                     << "}";
+            }
+            file << "]";
+            file.release();
+            return true;
+        }
+        catch (std::exception &e)
+        {
+            std::cerr << "Failed to serialize ROIs: " << e.what() << std::endl;
+            return false;
+        }
+        catch (...)
+        {
+            std::cerr << "Failed to serialize ROIs. Unknown Exception." << std::endl;
+            return false;
+        }
+    }
+
+    vector<Rect> deserializeROIs()
+    {
+        try
+        {
+            FileStorage file(SPARK_ROIS_FILEPATH, FileStorage::READ);
+            if (!file.isOpened())
+            {
+                std::cerr << "Failed to open file: " << SPARK_ROIS_FILEPATH << std::endl;
+                return {};
+            }
+
+            vector<Rect> rois;
+            FileNode roisNode = file["rois"];
+            for (FileNodeIterator it = roisNode.begin(); it != roisNode.end(); ++it)
+            {
+                Rect roi;
+                (*it)["roi"] >> roi;
+                rois.push_back(roi);
+            }
+            file.release();
+            if (!rois.empty())
+            {
+                std::cout << "ROIs read from disk." << std::endl;
+            }
+            return rois;
+        }
+        catch (std::exception &e)
+        {
+            std::cerr << "Failed to deserialize ROIs: " << e.what() << std::endl;
+            return {};
+        }
+        catch (...)
+        {
+            std::cerr << "Failed to deserialize ROIs. Unknown Exception." << std::endl;
+            return {};
+        }
     }
 }

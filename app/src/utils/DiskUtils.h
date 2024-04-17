@@ -6,5 +6,6 @@
 
 namespace disk_utils
 {
-    std::vector<cv::Mat> test();
+    bool serializeROIs(const std::vector<cv::Rect> &rois);
+    std::vector<cv::Rect> deserializeROIs();
 }

@@ -75,7 +75,7 @@ namespace
     const auto BUTTON_1_TL = cv::Point(415, 523);
     const auto BUTTON_1_BR = cv::Point(565, 573);
     const auto BUTTON_2_TL = cv::Point(687, 523);
-    const auto BUTTON_2_BR = cv::Point(837, 573);
+    const auto BUTTON_2_BR = cv::Point(900, 573);
 
     // color-blind friendly palette
     const auto AVNET_GREEN = cv::Scalar(0, 206, 137);
@@ -440,6 +440,12 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
     auto next_send_time = std::chrono::system_clock::now();
     namedWindow(app_name, WINDOW_NORMAL);
     setWindowProperty(app_name, cv::WND_PROP_FULLSCREEN, cv::WINDOW_FULLSCREEN);
+
+    if (!boxes.empty())
+    {
+        disk_utils::serializeROIs(boxes);
+    }
+
     while (!stop)
     {
         if (!frames.empty())
@@ -602,6 +608,7 @@ int main(int argc, char **argv)
 
     /*Load model_dir structure and its weight to runtime object */
     drpaimem_addr_start = get_drpai_start_addr();
+    boxes = disk_utils::deserializeROIs();
 
     std::shared_ptr<SparkProducerSocket> producerSocket;
     try
@@ -685,7 +692,14 @@ int main(int argc, char **argv)
         }
         else
         {
-            rectangle(frame, Point(687, 523), Point(900, 573), BLACK, -1);
+            if (!boxes.empty())
+            {
+                const std::string slot_text = "Monitoring " + std::to_string(boxes.size()) + " slots";
+                int baseline_slot_text = 0;
+                const auto slot_text_size = getTextSize(slot_text, FONT_HERSHEY_SIMPLEX, SECONDARY_LABEL_SCALE, 2, &baseline_slot_text);
+                putText(frame, slot_text, BUTTON_2_TL - Point(0, baseline_slot_text), FONT_HERSHEY_SIMPLEX, SECONDARY_LABEL_SCALE, BLACK, 2);
+            }
+            rectangle(frame, BUTTON_2_TL, BUTTON_2_BR, BLACK, -1);
             putText(frame, "Start Inference", Point(687 + (int)150 / 4, 553), FONT_HERSHEY_SIMPLEX, 0.5, WHITE, 1);
         }
         setMouseCallback(app_name, main_window_mouse_callback, &add_slot_in_figure);
