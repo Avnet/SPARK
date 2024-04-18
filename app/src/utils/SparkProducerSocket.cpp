@@ -14,26 +14,123 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <numeric>
+#include <bitset>
 
 #include "SparkProducerSocket.h"
 
 namespace
 {
-    int get_1289(const std::vector<ParkingSpot> &data)
+    /**
+     * @brief Encodes the occupancy status of parking spots 1, 2, 8, and 9 into the 4 least significant bits of the encoding integer.
+     *
+     * The encoding is represented as follows:
+     * - b[xxxxxxxx xxxxxxxx xxxxxxxx xxxxssss] = encoding(data)
+     * - x: do not care
+     * - s: occupancy status of parking spots 1, 2, 8, and 9 respectively
+     *
+     * @param data The vector of ParkingSpot objects containing occupancy status information.
+     * @return The encoded integer representing the occupancy status of parking spots 1, 2, 8, and 9.
+     */
+    int get_1_2_8_9_encoding(const std::vector<ParkingSpot> &data)
     {
-        return 0;
+        if (data.size() < 0)
+        {
+            return 0;
+        }
+
+        auto data_size = data.size();
+        int encoding = 0;
+
+        encoding |= data_size >= 1 ? data[0].is_occupied << 3 : 0;
+        encoding |= data_size >= 2 ? data[1].is_occupied << 2 : 0;
+        encoding |= data_size >= 8 ? data[7].is_occupied << 1 : 0;
+        encoding |= data_size >= 9 ? data[8].is_occupied : 0;
+
+        return encoding;
     }
-    int get_341011(const std::vector<ParkingSpot> &data)
+
+    /**
+     * @brief Encodes the occupancy status of parking spots 3, 4, 10, and 11 into the 4 least significant bits of the encoding integer.
+     *
+     * The encoding is represented as follows:
+     * - b[xxxxxxxx xxxxxxxx xxxxxxxx xxxxssss] = encoding(data)
+     * - x: do not care
+     * - s: occupancy status of parking spots 3, 4, 10, and 11 respectively
+     *
+     * @param data The vector of ParkingSpot objects containing occupancy status information.
+     * @return The encoded integer representing the occupancy status of parking spots 3, 4, 10, and 11.
+     */
+    int get_3_4_10_11_encoding(const std::vector<ParkingSpot> &data)
     {
-        return 0;
+        if (data.size() < 0)
+        {
+            return 0;
+        }
+
+        auto data_size = data.size();
+        int encoding = 0;
+
+        encoding |= data_size >= 3 ? data[2].is_occupied << 3 : 0;
+        encoding |= data_size >= 4 ? data[3].is_occupied << 2 : 0;
+        encoding |= data_size >= 10 ? data[9].is_occupied << 1 : 0;
+        encoding |= data_size >= 11 ? data[10].is_occupied : 0;
+
+        return encoding;
     }
-    int get_561213(const std::vector<ParkingSpot> &data)
+
+    /**
+     * @brief Encodes the occupancy status of parking spots 5, 6, 12, and 13 into the 4 least significant bits of the encoding integer.
+     *
+     * The encoding is represented as follows:
+     * - b[xxxxxxxx xxxxxxxx xxxxxxxx xxxxssss] = encoding(data)
+     * - x: do not care
+     * - s: occupancy status of parking spots 5, 6, 12, and 13 respectively
+     *
+     * @param data The vector of ParkingSpot objects containing occupancy status information.
+     * @return The encoded integer representing the occupancy status of parking spots 5, 6, 12, and 13.
+     */
+    int get_5_6_12_13_encoding(const std::vector<ParkingSpot> &data)
     {
-        return 0;
+        if (data.size() < 0)
+        {
+            return 0;
+        }
+
+        auto data_size = data.size();
+        int encoding = 0;
+
+        encoding |= data_size >= 5 ? data[4].is_occupied << 3 : 0;
+        encoding |= data_size >= 6 ? data[5].is_occupied << 2 : 0;
+        encoding |= data_size >= 12 ? data[11].is_occupied << 1 : 0;
+        encoding |= data_size >= 13 ? data[12].is_occupied : 0;
+
+        return encoding;
     }
-    int get_714(const std::vector<ParkingSpot> &data)
+
+    /**
+     * @brief Encodes the occupancy status of parking spots 7 and 14 into the 4 least significant bits of the encoding integer.
+     *
+     * The encoding is represented as follows:
+     * - b[xxxxxxxx xxxxxxxx xxxxxxxx xxxxsxsx] = encoding(data)
+     * - x: do not care
+     * - s: occupancy status of parking spots 7 and 14 respectively (note the don't care bits in between)
+     *
+     * @param data The vector of ParkingSpot objects containing occupancy status information.
+     * @return The encoded integer representing the occupancy status of parking spots 7 and 14.
+     */
+    int get_7_x_14_x_encoding(const std::vector<ParkingSpot> &data)
     {
-        return 0;
+        if (data.size() < 0)
+        {
+            return 0;
+        }
+
+        auto data_size = data.size();
+        int encoding = 0;
+        encoding |= data_size >= 7 ? data[6].is_occupied << 3 : 0;
+        encoding |= data_size >= 14 ? data[13].is_occupied << 1 : 0;
+
+        return encoding;
     }
 }
 
@@ -147,13 +244,13 @@ bool SparkProducerSocket::sendOccupancyData(const std::vector<ParkingSpot> &data
     std::stringstream payload;
     payload << "{";
     // underlying datatype: int
-    payload << "\"psStatus1_2_8_9\": " << std::to_string(get_1289(data)) << ",";
+    payload << "\"psStatus1_2_8_9\": " << std::to_string(get_1_2_8_9_encoding(data)) << ",";
     // underlying datatype: int
-    payload << "\"psStatus3_4_10_11\": " << std::to_string(get_341011(data)) << ",";
+    payload << "\"psStatus3_4_10_11\": " << std::to_string(get_3_4_10_11_encoding(data)) << ",";
     // underlying datatype: int
-    payload << "\"psStatus5_6_12_13\": " << std::to_string(get_561213(data)) << ",";
+    payload << "\"psStatus5_6_12_13\": " << std::to_string(get_5_6_12_13_encoding(data)) << ",";
     // underlying datatype: int
-    payload << "\"psStatus7_14\": " << std::to_string(get_714(data)) << ",";
+    payload << "\"psStatus7_x_14_x\": " << std::to_string(get_7_x_14_x_encoding(data)) << ",";
     // underlying datatype: int
     payload << "\"taken\": " << std::to_string(taken) << ",";
     // underlying datatype: int

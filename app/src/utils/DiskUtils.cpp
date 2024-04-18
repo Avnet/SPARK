@@ -87,7 +87,8 @@ namespace disk_utils
             {
                 Rect roi;
                 (*it)["roi"] >> roi;
-                rois.push_back(std::move(ParkingSpot(rois.size() + 1, roi)));
+                std::cout << "rois size " << roi << std::endl;
+                rois.push_back(ParkingSpot(rois.size() + 1, roi));
             }
             file.release();
             if (!rois.empty())
