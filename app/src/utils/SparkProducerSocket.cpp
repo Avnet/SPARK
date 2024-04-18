@@ -14,26 +14,102 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <numeric>
+#include <bitset>
 
 #include "SparkProducerSocket.h"
 
 namespace
 {
-    int get_1289(const std::vector<ParkingSpot> &data)
+    int get_1_2_8_9_encoding(const std::vector<ParkingSpot> &data)
     {
-        return 0;
+        if (data.size() < 0)
+        {
+            return 0;
+        }
+
+        // Due to IoT connect limitations, we will encode parking spots 1, 2, 8, and 9 positions
+        // into the 4 LSB of the encoding integer
+        // = b[xxxxxxxx xxxxxxxx xxxxxxxx xxxxssss] = encoding(data)
+        // where x is do not care
+        // where ssss is the occupancy status of parking spots 1, 2, 8, and 9 respectively
+        auto data_size = data.size();
+        int encoding = 0;
+
+        encoding |= data_size >= 1 ? data[0].is_occupied << 3 : 0;
+        encoding |= data_size >= 2 ? data[1].is_occupied << 2 : 0;
+        encoding |= data_size >= 8 ? data[7].is_occupied << 1 : 0;
+        encoding |= data_size >= 9 ? data[8].is_occupied : 0;
+
+        std::cout << "1289 encoding: " << std::bitset<32>(encoding) << std::endl;
+
+        return encoding;
     }
-    int get_341011(const std::vector<ParkingSpot> &data)
+
+    int get_3_4_10_11_encoding(const std::vector<ParkingSpot> &data)
     {
-        return 0;
+        if (data.size() < 0)
+        {
+            return 0;
+        }
+
+        // Due to IoT connect limitations, we will encode parking spots 3, 4, 10, and 11 positions
+        // into the 4 LSB of the encoding integer
+        // = b[xxxxxxxx xxxxxxxx xxxxxxxx xxxxssss] = encoding(data)
+        // where x is do not care
+        // where ssss is the occupancy status of parking spots 3, 4, 10, and 11 respectively
+        auto data_size = data.size();
+        int encoding = 0;
+
+        encoding |= data_size >= 3 ? data[2].is_occupied << 3 : 0;
+        encoding |= data_size >= 4 ? data[3].is_occupied << 2 : 0;
+        encoding |= data_size >= 10 ? data[9].is_occupied << 1 : 0;
+        encoding |= data_size >= 11 ? data[10].is_occupied : 0;
+        std::cout << "341011 encoding: " << std::bitset<32>(encoding) << std::endl;
+        return encoding;
     }
-    int get_561213(const std::vector<ParkingSpot> &data)
+
+    int get_5_6_12_13_encoding(const std::vector<ParkingSpot> &data)
     {
-        return 0;
+        if (data.size() < 0)
+        {
+            return 0;
+        }
+
+        auto data_size = data.size();
+        int encoding = 0;
+
+        // Due to IoT connect limitations, we will encode parking spots 5, 6, 12, and 13 positions
+        // into the 4 LSB of the encoding integer
+        // = b[xxxxxxxx xxxxxxxx xxxxxxxx xxxxssss] = encoding(data)
+        // where x is do not care
+        // where ssss is the occupancy status of parking spots 5, 6, 12, and 13 respectively
+        encoding |= data_size >= 5 ? data[4].is_occupied << 3 : 0;
+        encoding |= data_size >= 6 ? data[5].is_occupied << 2 : 0;
+        encoding |= data_size >= 12 ? data[11].is_occupied << 1 : 0;
+        encoding |= data_size >= 13 ? data[12].is_occupied : 0;
+
+        std::cout << "561213 encoding: " << std::bitset<32>(encoding) << std::endl;
+        return encoding;
     }
-    int get_714(const std::vector<ParkingSpot> &data)
+
+    int get_7_x_14_x_encoding(const std::vector<ParkingSpot> &data)
     {
-        return 0;
+        if (data.size() < 0)
+        {
+            return 0;
+        }
+
+        auto data_size = data.size();
+        int encoding = 0;
+        // Due to IoT connect limitations, we will encode parking spots 7, 14 positions
+        // into the 4 LSB of the encoding integer
+        // = b[xxxxxxxx xxxxxxxx xxxxxxxx xxxxsxsx] = encoding(data)
+        // where x is do not care
+        // where sxsx is the occupancy status of parking spots 7, 14 respectively (note the dont care bits in between)
+        encoding |= data_size >= 7 ? data[6].is_occupied << 3 : 0;
+        encoding |= data_size >= 14 ? data[13].is_occupied << 1 : 0;
+        std::cout << "7x14x encoding: " << std::bitset<32>(encoding) << std::endl;
+        return encoding;
     }
 }
 
@@ -147,13 +223,13 @@ bool SparkProducerSocket::sendOccupancyData(const std::vector<ParkingSpot> &data
     std::stringstream payload;
     payload << "{";
     // underlying datatype: int
-    payload << "\"psStatus1_2_8_9\": " << std::to_string(get_1289(data)) << ",";
+    payload << "\"psStatus1_2_8_9\": " << std::to_string(get_1_2_8_9_encoding(data)) << ",";
     // underlying datatype: int
-    payload << "\"psStatus3_4_10_11\": " << std::to_string(get_341011(data)) << ",";
+    payload << "\"psStatus3_4_10_11\": " << std::to_string(get_3_4_10_11_encoding(data)) << ",";
     // underlying datatype: int
-    payload << "\"psStatus5_6_12_13\": " << std::to_string(get_561213(data)) << ",";
+    payload << "\"psStatus5_6_12_13\": " << std::to_string(get_5_6_12_13_encoding(data)) << ",";
     // underlying datatype: int
-    payload << "\"psStatus7_14\": " << std::to_string(get_714(data)) << ",";
+    payload << "\"psStatus7_14\": " << std::to_string(get_7_x_14_x_encoding(data)) << ",";
     // underlying datatype: int
     payload << "\"taken\": " << std::to_string(taken) << ",";
     // underlying datatype: int
