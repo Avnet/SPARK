@@ -196,6 +196,9 @@ class IoTConnectClient:
         self.sdk.SendData(payload)
     
     def send_json_payload(self, occupancy_data: Dict[str, Any]) -> None:
+        lat_min, lat_max = 39.0, 40.0
+        long_min, long_max = -105.0, -104.0
+        occupancy_data['location'] = [round(random.uniform(lat_min, lat_max), 5), round(random.uniform(long_min, long_max), 5)]
         payload = [{
             "uniqueId": self.config['ids']['uniqueId'],
             "time": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.000Z"),

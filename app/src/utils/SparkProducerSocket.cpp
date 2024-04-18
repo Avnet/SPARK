@@ -250,7 +250,7 @@ bool SparkProducerSocket::sendOccupancyData(const std::vector<ParkingSpot> &data
     // underlying datatype: int
     payload << "\"psStatus5_6_12_13\": " << std::to_string(get_5_6_12_13_encoding(data)) << ",";
     // underlying datatype: int
-    payload << "\"psStatus7_14\": " << std::to_string(get_7_x_14_x_encoding(data)) << ",";
+    payload << "\"psStatus7_x_14_x\": " << std::to_string(get_7_x_14_x_encoding(data)) << ",";
     // underlying datatype: int
     payload << "\"taken\": " << std::to_string(taken) << ",";
     // underlying datatype: int
