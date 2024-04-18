@@ -261,10 +261,10 @@ void get_patches(int event, int x, int y, int flags, void *param)
 
     // Draw complete/official parking_spots
     display_header1_header2(frame_copy, DRAG_MESSAGE, UNDO_MESSAGE);
-    for (int i = 0; i < parking_spots.size(); i++)
+    for (const auto &parking_spot : parking_spots)
     {
-        putText(frame_copy, "id: " + to_string(i + 1), parking_spots[i].coords.tl(), FONT_HERSHEY_DUPLEX, 1.0, AVNET_COMPLEMENTARY, 2);
-        rectangle(frame_copy, parking_spots[i].coords, AVNET_COMPLEMENTARY, 2);
+        putText(frame_copy, "id: " + parking_spot.slot_id, parking_spot.coords.tl(), FONT_HERSHEY_DUPLEX, 1.0, AVNET_COMPLEMENTARY, 2);
+        rectangle(frame_copy, parking_spot.coords, AVNET_COMPLEMENTARY, 2);
     }
     box_end = Point2f(x, y);
     imshow("Draw parking_spots with mouse, press <esc> to return to inference", frame_copy);
@@ -529,7 +529,7 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
 
                 int baseline = 0;
                 int thickness = 2;
-                Size textSize = getTextSize("id: " + to_string(parking_spot.slot_id + 1), FONT_HERSHEY_DUPLEX, SECONDARY_LABEL_SCALE, thickness, &baseline);
+                Size textSize = getTextSize("id: " + to_string(parking_spot.slot_id), FONT_HERSHEY_DUPLEX, SECONDARY_LABEL_SCALE, thickness, &baseline);
                 Size labelSize = getTextSize(label, FONT_HERSHEY_DUPLEX, PRIMARY_LABEL_SCALE, thickness, &baseline);
 
                 // Calculate the position for the text background
@@ -541,7 +541,7 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
                 rectangle(img, labelOrg + Point(0, baseline), labelOrg + Point(labelSize.width, -labelSize.height), boxColor, FILLED);
 
                 // Now draw the text over the rectangle
-                putText(img, "id: " + to_string(parking_spot.slot_id + 1), textOrg + Point(0, 3), FONT_HERSHEY_DUPLEX, SECONDARY_LABEL_SCALE, BLACK, thickness);
+                putText(img, "id: " + to_string(parking_spot.slot_id), textOrg + Point(0, 3), FONT_HERSHEY_DUPLEX, SECONDARY_LABEL_SCALE, BLACK, thickness);
                 putText(img, label, labelOrg + Point(0, 2), FONT_HERSHEY_DUPLEX, PRIMARY_LABEL_SCALE, BLACK, thickness);
 
                 rectangle(img, parking_spot.coords, boxColor, thickness);
