@@ -103,13 +103,13 @@ class IoTConnectClient:
         self.run_continuously = False
         raise SignalException("Exit signal detected")
 
-    
+    # DEPRECATED in favor of 'receive_json_payload'
     def receive_taken_empty_spark_data(self, sock: socket.socket) -> (int, int):
         """Receive SPARK data from producer socket"""
         # return (taken, empty)
         # Data comes over the wire as bytes('taken,empty\n') where taken, empty are integers
         if sock is None:
-            raise ConnectionError("SPARK producer socket not connected")
+            raise ConnectionError("SPARK consumer socket not connected")
 
         # return random.randint(0, 100), random.randint(0, 100)
         bytes_data, _addr = sock.recvfrom(1024)
@@ -121,6 +121,21 @@ class IoTConnectClient:
         print(f"Received data: {utilizations}")
         util_list = utilizations.split(',')
         return tuple(map(int, util_list))
+    
+    def receive_json_payload(self, sock: socket.socket) -> Dict[str, Any]:
+        """Receive JSON payload from producer socket"""
+        if sock is None:
+            raise ConnectionError("SPARK consumer socket not connected")
+        
+        bytes_data, _addr = sock.recvfrom(1024)
+        if not bytes_data:
+            raise ConnectionError("SPARK producer socket closing")
+
+        try:
+            return json.loads(bytes_data.decode('utf-8'))
+        except Exception as e:
+            print(f"Failed to parse JSON payload: {e}")
+            return Dict()
 
     def device_callback(self, msg: Dict[str, Any]) -> None:
         print("\n--- Device Callback ---")
@@ -179,6 +194,15 @@ class IoTConnectClient:
         }]
         print(f"Sending payload: {payload}")
         self.sdk.SendData(payload)
+    
+    def send_json_payload(self, occupancy_data: Dict[str, Any]) -> None:
+        payload = [{
+            "uniqueId": self.config['ids']['uniqueId'],
+            "time": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+            "data": occupancy_data
+        }]
+        print(f"Sending payload: {payload}")
+        self.sdk.SendData(payload)
 
     def run_telemetry_continuously(self) -> None:
         """Run IoTConnect client continuously"""
@@ -199,9 +223,11 @@ class IoTConnectClient:
                     next_transmit = time.time()
                     print("Sending telemetry data to IoTConnect")
                     while True:
-                        taken, empty = self.receive_taken_empty_spark_data(spark_socket)
-                        if time.time() > next_transmit:
-                            self.send_data(empty, taken)
+                        # taken, empty = self.receive_taken_empty_spark_data(spark_socket)
+                        payload = self.receive_json_payload(spark_socket)
+                        if time.time() > next_transmit and payload is not None and len(payload.items()) != 0:
+                            # self.send_data(empty, taken)
+                            self.send_json_payload(payload)
                             next_transmit = time.time() + self.sdk_options['transmit_interval_seconds']
             except SignalException:
                 sys.exit(0)

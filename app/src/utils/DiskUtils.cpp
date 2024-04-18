@@ -24,7 +24,7 @@ namespace
 
 namespace disk_utils
 {
-    bool serializeROIs(const std::vector<cv::Rect> &rois)
+    bool serializeROIs(const std::vector<ParkingSpot> &rois)
     {
         try
         {
@@ -51,7 +51,7 @@ namespace disk_utils
                 // {: means compact form
                 file << "{:"
                      << "roi"
-                     << roi
+                     << roi.coords
                      << "}";
             }
             file << "]";
@@ -70,7 +70,7 @@ namespace disk_utils
         }
     }
 
-    vector<Rect> deserializeROIs()
+    vector<ParkingSpot> deserializeROIs()
     {
         try
         {
@@ -81,13 +81,13 @@ namespace disk_utils
                 return {};
             }
 
-            vector<Rect> rois;
+            vector<ParkingSpot> rois;
             FileNode roisNode = file["rois"];
             for (FileNodeIterator it = roisNode.begin(); it != roisNode.end(); ++it)
             {
                 Rect roi;
                 (*it)["roi"] >> roi;
-                rois.push_back(roi);
+                rois.push_back(std::move(ParkingSpot(rois.size() + 1, roi)));
             }
             file.release();
             if (!rois.empty())

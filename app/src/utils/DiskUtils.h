@@ -4,8 +4,10 @@
 #include <string>
 #include <vector>
 
+#include <ParkingSpot.h>
+
 namespace disk_utils
 {
-    bool serializeROIs(const std::vector<cv::Rect> &rois);
-    std::vector<cv::Rect> deserializeROIs();
+    bool serializeROIs(const std::vector<ParkingSpot> &rois);
+    std::vector<ParkingSpot> deserializeROIs();
 }
