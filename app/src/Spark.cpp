@@ -568,9 +568,12 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
             imshow(app_name, img);
             if (producerSocket && (std::chrono::system_clock::now() >= next_send_time))
             {
-                producerSocket->sendOccupancyData(std::make_pair(taken, empty));
-                cout << "Sent occupancy data (taken, empty): " << taken << ", " << empty << endl;
-                next_send_time = std::chrono::system_clock::now() + TRANSMISSION_PERIOD;
+                // TODO: move next_send_time to SparkProducerSocket
+                if (producerSocket->sendOccupancyData(parking_spots))
+                {
+                    next_send_time = std::chrono::system_clock::now() + TRANSMISSION_PERIOD;
+                    std::cout << "Sent occupancy data" << std::endl;
+                }
             }
             else
             {

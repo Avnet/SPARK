@@ -188,6 +188,7 @@ bool SparkProducerSocket::sendOccupancyData(const std::vector<ParkingSpot> &data
     if (success)
     {
         last_telemetry_hash = cur_hash;
+        std::cout << "Sent telemetry: " << payload_str << std::endl;
     }
     return success;
 }
