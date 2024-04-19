@@ -139,8 +139,8 @@ namespace
  * @param hostname_ipv6 The host address to connect to.
  * @param port The port number to connect to.
  */
-SparkProducerSocket::SparkProducerSocket(const std::string &hostname_ipv6, uint16_t port)
-    : sockfd(-1), hostname_ipv6(hostname_ipv6), port(port), servinfo(nullptr), spark_addrinfo(nullptr), last_telemetry_hash(0)
+SparkProducerSocket::SparkProducerSocket(const std::string &hostname_ipv6, uint16_t port, const std::chrono::milliseconds min_transmit_period)
+    : sockfd(-1), hostname_ipv6(hostname_ipv6), port(port), servinfo(nullptr), spark_addrinfo(nullptr), min_transmit_period(min_transmit_period)
 {
     int opt = 1;
     struct addrinfo hints, *p;
@@ -178,6 +178,8 @@ SparkProducerSocket::SparkProducerSocket(const std::string &hostname_ipv6, uint1
         throw std::runtime_error("Failed to create socket");
     }
     std::cout << "SPARK producer socket created" << std::endl;
+
+    next_transmit_time = std::chrono::system_clock::now();
 }
 
 /**
@@ -201,13 +203,16 @@ SparkProducerSocket::~SparkProducerSocket()
  */
 bool SparkProducerSocket::sendOccupancyData(const std::pair<int, int> &data)
 {
-    std::string payload = std::to_string(data.first) + "," + std::to_string(data.second) + "\n";
-
-    const auto cur_hash = std::hash<std::string>{}(payload);
-    if (cur_hash == last_telemetry_hash)
+    if (std::chrono::system_clock::now() < next_transmit_time)
     {
+        std::cout << "Telemetry not sent: too soon since last transmission. Time remaining: "
+                  << std::chrono::duration_cast<std::chrono::milliseconds>(next_transmit_time - std::chrono::system_clock::now()).count()
+                  << "ms"
+                  << std::endl;
         return false;
     }
+
+    std::string payload = std::to_string(data.first) + "," + std::to_string(data.second) + "\n";
 
     int total = 0;
     int bytes_sent;
@@ -225,7 +230,7 @@ bool SparkProducerSocket::sendOccupancyData(const std::pair<int, int> &data)
     bool success = bytes_sent != -1;
     if (success)
     {
-        last_telemetry_hash = cur_hash;
+        next_transmit_time = std::chrono::system_clock::now() + min_transmit_period;
     }
     return success;
 }
@@ -233,8 +238,16 @@ bool SparkProducerSocket::sendOccupancyData(const std::pair<int, int> &data)
 /// @brief Sends relevant telemetry to SPARK Datagram socket. If you have that socket configured with IoT connect, you can see the data in the IoT connect dashboard.
 /// @param data Parking spots data, but for demo purposes, only 14 slots matter
 /// @return True if the data is sent successfully, false otherwise.
-bool SparkProducerSocket::sendOccupancyData(const std::vector<ParkingSpot> &data)
+bool SparkProducerSocket::sendOccupancyDataDebounced(const std::vector<ParkingSpot> &data)
 {
+    // if (std::chrono::system_clock::now() < next_transmit_time)
+    // {
+    //     std::cout << "Telemetry not sent: too soon since last transmission. Time remaining: "
+    //               << std::chrono::duration_cast<std::chrono::milliseconds>(next_transmit_time - std::chrono::system_clock::now()).count()
+    //               << "ms"
+    //               << std::endl;
+    //     return false;
+    // }
 
     const auto taken = std::accumulate(begin(data), end(data), 0, [](const int &acc, const ParkingSpot &ps)
                                        { return acc + (ps.is_occupied ? 1 : 0); });
@@ -264,13 +277,6 @@ bool SparkProducerSocket::sendOccupancyData(const std::vector<ParkingSpot> &data
     int bytes_remaining = payload.str().length();
     // need to ensure lifetime of string is long enough to be sent ota
     const auto payload_str = payload.str();
-
-    const auto cur_hash = std::hash<std::string>{}(payload_str);
-    if (cur_hash == last_telemetry_hash)
-    {
-        return false;
-    }
-
     while (total < payload.str().length())
     {
         bytes_sent = sendto(sockfd, payload_str.c_str() + total, bytes_remaining, 0, spark_addrinfo->ai_addr, spark_addrinfo->ai_addrlen);
@@ -284,8 +290,8 @@ bool SparkProducerSocket::sendOccupancyData(const std::vector<ParkingSpot> &data
     bool success = bytes_sent != -1;
     if (success)
     {
-        last_telemetry_hash = cur_hash;
         std::cout << "Sent telemetry: " << payload_str << std::endl;
+        next_transmit_time = std::chrono::system_clock::now() + min_transmit_period;
     }
     return success;
 }

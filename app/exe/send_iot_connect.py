@@ -6,6 +6,7 @@ import sys
 import signal
 import time
 import random
+import hashlib
 from datetime import datetime
 from typing import Dict, Any, List
 
@@ -36,12 +37,15 @@ class IoTConnectClient:
             "skipValidation": False,
             "discoveryUrl": self.config['networking']['discoveryUrl'],
             "IsDebug": True,
-            "transmit_interval_seconds": 5
+            "transmit_interval_seconds": 3
         }
         self.sdk = None
         self.device_list = []
         self.setup_exit_handler()
+
         self.run_continuously = True
+        self.last_payload_md5 = None
+        self.next_transmit_time = time.time()
         print("IoTConnect service initialized")
 
     def load_config(self, config_paths: List[str]) -> None:
@@ -182,30 +186,33 @@ class IoTConnectClient:
         print("--- No further business logic implemented ---")
         print(json.dumps(msg))
 
-    def send_data(self, empty, taken) -> None:
-        payload = [{
-            "uniqueId": self.config['ids']['uniqueId'],
-            "time": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.000Z"),
-            "data": {
-                "empty": empty,
-                "taken": taken,
-                "location": [49, 11]
-            },
-        }]
-        print(f"Sending payload: {payload}")
-        self.sdk.SendData(payload)
-    
-    def send_json_payload(self, occupancy_data: Dict[str, Any]) -> None:
-        lat_min, lat_max = 39.0, 40.0
-        long_min, long_max = -105.0, -104.0
-        occupancy_data['location'] = [round(random.uniform(lat_min, lat_max), 5), round(random.uniform(long_min, long_max), 5)]
-        payload = [{
-            "uniqueId": self.config['ids']['uniqueId'],
-            "time": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.000Z"),
-            "data": occupancy_data
-        }]
-        print(f"Sending payload: {payload}")
-        self.sdk.SendData(payload)
+    def send_json_payload_debounced(self, occupancy_data: Dict[str, Any]) -> None:
+        if occupancy_data is None or len(occupancy_data.items()) == 0:
+            return False
+
+        try:
+            cur_payload_md5 = hashlib.md5(str(occupancy_data).encode()).hexdigest()
+            # Maybe we want to send the same data multiple times if lots of time has passed
+            if cur_payload_md5 == self.last_payload_md5 or time.time() < self.next_transmit_time:
+                return False
+
+            lat_min, lat_max = 39.0, 40.0
+            long_min, long_max = -105.0, -104.0
+            occupancy_data['location'] = [round(random.uniform(lat_min, lat_max), 5), round(random.uniform(long_min, long_max), 5)]
+            payload = [{
+                "uniqueId": self.config['ids']['uniqueId'],
+                "time": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+                "data": occupancy_data
+            }]
+            print(f"Sending payload: {payload}")
+            self.sdk.SendData(payload)
+
+            self.last_payload_md5 = cur_payload_md5
+            self.next_transmit_time = time.time() + self.sdk_options['transmit_interval_seconds']
+            return True
+        except Exception as e:
+            print(f"Caught exception {e} while trying to send JSON payload to IoT connect.")
+            return False
 
     def run_telemetry_continuously(self) -> None:
         """Run IoTConnect client continuously"""
@@ -223,15 +230,10 @@ class IoTConnectClient:
                     self.sdk.getTwins()
                     self.device_list = self.sdk.Getdevice()
                     spark_socket = self.get_spark_datagram_socket()
-                    next_transmit = time.time()
-                    print("Sending telemetry data to IoTConnect")
+                    print("Forwarding telemetry data to IoTConnect when it arrives...")
                     while True:
-                        # taken, empty = self.receive_taken_empty_spark_data(spark_socket)
                         payload = self.receive_json_payload(spark_socket)
-                        if time.time() > next_transmit and payload is not None and len(payload.items()) != 0:
-                            # self.send_data(empty, taken)
-                            self.send_json_payload(payload)
-                            next_transmit = time.time() + self.sdk_options['transmit_interval_seconds']
+                        self.send_json_payload_debounced(payload)
             except SignalException:
                 sys.exit(0)
             # exponential backoff
