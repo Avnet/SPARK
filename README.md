@@ -9,6 +9,8 @@ Welcome to SPARK, the edge-AI solution for smart EV charging and parking lot man
 
 SPARK is an effective EV charging prototype that integrates a real-time capable convolutional neural network (CNN) for occupancy detection with the RZBoard V2L. The result: a smart parking lot occupancy/EV charging experience for low cost. This system is designed to automate parking lot analysis, streaming edge compute data to your desired target: an information hub like IoT Connect, or an HDMI output. The result: improved user-experience for EV charging customers and parking lot managers.
 
+Looking for the dataset used to train? [Check it out on kaggle.](https://www.kaggle.com/datasets/ljkeller/matchbox-car-parking-occupancy)
+
 ## Features
 
 - **Real-Time Occupancy Detection**: Utilizing an efficient CNN, SPARK detects vehicle occupancy in real-time, ensuring accurate information on parking availability.
