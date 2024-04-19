@@ -439,7 +439,6 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
 
     Rect box;
     Mat patch1, patch_con, patch_norm, inp_img;
-    auto next_send_time = std::chrono::system_clock::now();
     namedWindow(app_name, WINDOW_NORMAL);
     setWindowProperty(app_name, cv::WND_PROP_FULLSCREEN, cv::WINDOW_FULLSCREEN);
 
@@ -566,18 +565,9 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
             }
 
             imshow(app_name, img);
-            if (producerSocket && (std::chrono::system_clock::now() >= next_send_time))
+            if (producerSocket && producerSocket->sendOccupancyDataDebounced(parking_spots))
             {
-                // TODO: move next_send_time to SparkProducerSocket
-                if (producerSocket->sendOccupancyData(parking_spots))
-                {
-                    next_send_time = std::chrono::system_clock::now() + TRANSMISSION_PERIOD;
-                    std::cout << "Sent occupancy data" << std::endl;
-                }
-            }
-            else
-            {
-                cout << "Time until next send: " << std::chrono::duration_cast<std::chrono::seconds>(next_send_time - std::chrono::system_clock::now()).count() << " seconds" << endl;
+                std::cout << "Sent occupancy data" << std::endl;
             }
         }
     }
