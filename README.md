@@ -17,7 +17,12 @@ Looking for the dataset used to train? [Check it out on kaggle.](https://www.kag
 - **User-Friendly Interface**: Easy-to-use interface demo interface: output data to HDMI for simple viewing. Or, integrate with IoT connect for bootstrapped dashboards.
 - **Sustainable Solution**: Promotes efficient energy use and supports the growing need for EV infrastructure.
 - **Scalable Architecture**: Designed to scale: one image could host up to 200 parking spots. Try adding more parking slots and/or images until your FPS requirement isn't met. Then, scale horizontally with more RZBoards connected to your IoT Connect style HUB!
+- **IoT Connect Enablement**: Optionally, configure the demo with [IoT Connect](https://www.iotconnect.io/) by configuring a `secrets.json` file in `/opt/spark/iot`. See [secrets-template.json](/app/iot/secrets-template.json) for more info.
 
+<p align="center">
+  <img width="640" src="https://github.com/Avnet/SPARK/assets/44109284/f5e593ca-aedd-43ea-a491-2896aab8d3f0">
+</p>
+ 
 ## Installation
 
 ### Standalone Installer
