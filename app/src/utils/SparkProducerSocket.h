@@ -11,7 +11,7 @@
 class SparkProducerSocket
 {
 public:
-    SparkProducerSocket(const std::string &hostname_ipv6, uint16_t port, const std::chrono::milliseconds min_transmit_period = std::chrono::milliseconds(1000));
+    SparkProducerSocket(const std::string &hostname_ipv6, uint16_t port, const std::chrono::milliseconds min_transmit_period = std::chrono::milliseconds(800));
     ~SparkProducerSocket();
 
     bool sendOccupancyData(const std::pair<int, int> &data);
