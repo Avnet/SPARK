@@ -6,7 +6,6 @@ import sys
 import signal
 import time
 import random
-import hashlib
 from datetime import datetime
 from typing import Dict, Any, List
 
@@ -37,14 +36,14 @@ class IoTConnectClient:
             "skipValidation": False,
             "discoveryUrl": self.config['networking']['discoveryUrl'],
             "IsDebug": True,
-            "transmit_interval_seconds": 3
+            "transmit_interval_seconds": 2
         }
         self.sdk = None
         self.device_list = []
         self.setup_exit_handler()
 
         self.run_continuously = True
-        self.last_payload_md5 = None
+        self.last_payload_str = None
         self.next_transmit_time = time.time()
         print("IoTConnect service initialized")
 
@@ -146,7 +145,7 @@ class IoTConnectClient:
         print(json.dumps(msg))
         cmd_type = None
         if msg is not None and len(msg.items()) != 0:
-            cmd_type = msg["ct"] if "ct"in msg else None
+            cmd_type = msg["ct"] if "ct" in msg else None
         # Other Command
         if cmd_type == 0:
             """
@@ -186,14 +185,15 @@ class IoTConnectClient:
         print("--- No further business logic implemented ---")
         print(json.dumps(msg))
 
-    def send_json_payload_debounced(self, occupancy_data: Dict[str, Any]) -> None:
+    def send_json_payload_throttled(self, occupancy_data: Dict[str, Any]) -> None:
         if occupancy_data is None or len(occupancy_data.items()) == 0:
             return False
 
         try:
-            cur_payload_md5 = hashlib.md5(str(occupancy_data).encode()).hexdigest()
+            # Snapshot payload before altering it
+            cur_payload_str = json.dumps(occupancy_data)
             # Maybe we want to send the same data multiple times if lots of time has passed
-            if cur_payload_md5 == self.last_payload_md5 or time.time() < self.next_transmit_time:
+            if cur_payload_str == self.last_payload_str or time.time() < self.next_transmit_time:
                 return False
 
             lat_min, lat_max = 39.0, 40.0
@@ -207,7 +207,7 @@ class IoTConnectClient:
             print(f"Sending payload: {payload}")
             self.sdk.SendData(payload)
 
-            self.last_payload_md5 = cur_payload_md5
+            self.last_payload_str = cur_payload_str
             self.next_transmit_time = time.time() + self.sdk_options['transmit_interval_seconds']
             return True
         except Exception as e:
@@ -233,7 +233,7 @@ class IoTConnectClient:
                     print("Forwarding telemetry data to IoTConnect when it arrives...")
                     while True:
                         payload = self.receive_json_payload(spark_socket)
-                        self.send_json_payload_debounced(payload)
+                        self.send_json_payload_throttled(payload)
             except SignalException:
                 sys.exit(0)
             # exponential backoff
