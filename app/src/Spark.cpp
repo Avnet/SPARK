@@ -262,7 +262,7 @@ void get_patches(int event, int x, int y, int flags, void *param)
     display_header1_header2(frame_copy, DRAG_MESSAGE, UNDO_MESSAGE);
     for (const auto &parking_spot : parking_spots)
     {
-        putText(frame_copy, "id: " + parking_spot.slot_id, parking_spot.coords.tl(), FONT_HERSHEY_DUPLEX, 1.0, AVNET_COMPLEMENTARY, 2);
+        putText(frame_copy, "id: " + std::to_string(parking_spot.slot_id), parking_spot.coords.tl(), FONT_HERSHEY_DUPLEX, 1.0, AVNET_COMPLEMENTARY, 2);
         rectangle(frame_copy, parking_spot.coords, AVNET_COMPLEMENTARY, 2);
     }
     box_end = Point2f(x, y);
@@ -331,40 +331,6 @@ redraw_rectangle:
     re_draw = draw_rectangle();
     if (re_draw == true)
         goto redraw_rectangle;
-}
-
-/*****************************************
- * Function Name     : removeButtonCallback
- * Description       : remove slot from the parking_spots vector based on the user input(comma separated input)
- ******************************************/
-void removeButtonCallback(int, void *)
-{
-    Mat frame = Mat::zeros(600, 600, CV_8UC3);
-    putText(frame, "Enter comma separated integers to remove:", Point(50, 50), FONT_HERSHEY_SIMPLEX, 0.5, AVNET_COMPLEMENTARY, 1, LINE_AA);
-    imshow("Frame", frame);
-    string inputText;
-    int key = -1;
-    while (key != 13)
-    {
-        key = waitKey(0);
-        if (key != 13)
-            inputText += (char)key;
-        putText(frame, inputText, Point(100, 100), FONT_HERSHEY_SIMPLEX, 0.5, AVNET_GREEN, 1);
-        imshow("Frame", frame);
-    }
-    vector<int> indicesToRemove;
-    stringstream ss(inputText);
-    int index;
-    while (ss >> index)
-    {
-        indicesToRemove.push_back(index);
-        if (ss.peek() == ',')
-            ss.ignore();
-    }
-    for (int i = indicesToRemove.size() - 1; i >= 0; i--)
-    {
-        parking_spots.erase(parking_spots.begin() + indicesToRemove[i - 1]);
-    }
 }
 
 /*****************************************
@@ -564,9 +530,9 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
             }
 
             imshow(app_name, img);
-            if (producerSocket && producerSocket->sendOccupancyDataDebounced(parking_spots))
+            if (producerSocket && producerSocket->sendOccupancyDataThrottled(parking_spots))
             {
-                std::cout << "Sent occupancy data" << std::endl;
+                // std::cout << "Sent occupancy data" << std::endl;
             }
         }
     }

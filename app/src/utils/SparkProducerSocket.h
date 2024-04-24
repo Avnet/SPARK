@@ -11,11 +11,10 @@
 class SparkProducerSocket
 {
 public:
-    SparkProducerSocket(const std::string &hostname_ipv6, uint16_t port, const std::chrono::milliseconds min_transmit_period = std::chrono::milliseconds(800));
+    SparkProducerSocket(const std::string &hostname_ipv6, uint16_t port, const std::chrono::milliseconds min_transmit_period = std::chrono::milliseconds(400));
     ~SparkProducerSocket();
 
-    bool sendOccupancyData(const std::pair<int, int> &data);
-    bool sendOccupancyDataDebounced(const std::vector<ParkingSpot> &data);
+    bool sendOccupancyDataThrottled(const std::vector<ParkingSpot> &data);
 
 private:
     int sockfd;

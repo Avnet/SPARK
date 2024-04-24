@@ -195,13 +195,10 @@ SparkProducerSocket::~SparkProducerSocket()
     }
 }
 
-/**
- * @brief DEPRECATED IN FAVOR OF "sendOccupancyData(const std::vector<ParkingSpot> &data)"
- * Sends occupancy data to the server.
- * @param data The data to be sent, represented as a pair of integers (taken, empty).
- * @return True if the data is sent successfully, false otherwise.
- */
-bool SparkProducerSocket::sendOccupancyData(const std::pair<int, int> &data)
+/// @brief Sends relevant telemetry to SPARK Datagram socket. If you have that socket configured with IoT connect, you can see the data in the IoT connect dashboard.
+/// @param data Parking spots data, but for demo purposes, only 14 slots matter
+/// @return True if the data is sent successfully, false otherwise.
+bool SparkProducerSocket::sendOccupancyDataThrottled(const std::vector<ParkingSpot> &data)
 {
     if (std::chrono::system_clock::now() < next_transmit_time)
     {
@@ -211,43 +208,6 @@ bool SparkProducerSocket::sendOccupancyData(const std::pair<int, int> &data)
                   << std::endl;
         return false;
     }
-
-    std::string payload = std::to_string(data.first) + "," + std::to_string(data.second) + "\n";
-
-    int total = 0;
-    int bytes_sent;
-    int bytes_remaining = payload.length();
-    while (total < payload.length())
-    {
-        bytes_sent = sendto(sockfd, payload.c_str() + total, bytes_remaining, 0, spark_addrinfo->ai_addr, spark_addrinfo->ai_addrlen);
-        if (bytes_sent == -1)
-        {
-            break;
-        }
-        total += bytes_sent;
-        bytes_remaining -= bytes_sent;
-    }
-    bool success = bytes_sent != -1;
-    if (success)
-    {
-        next_transmit_time = std::chrono::system_clock::now() + min_transmit_period;
-    }
-    return success;
-}
-
-/// @brief Sends relevant telemetry to SPARK Datagram socket. If you have that socket configured with IoT connect, you can see the data in the IoT connect dashboard.
-/// @param data Parking spots data, but for demo purposes, only 14 slots matter
-/// @return True if the data is sent successfully, false otherwise.
-bool SparkProducerSocket::sendOccupancyDataDebounced(const std::vector<ParkingSpot> &data)
-{
-    // if (std::chrono::system_clock::now() < next_transmit_time)
-    // {
-    //     std::cout << "Telemetry not sent: too soon since last transmission. Time remaining: "
-    //               << std::chrono::duration_cast<std::chrono::milliseconds>(next_transmit_time - std::chrono::system_clock::now()).count()
-    //               << "ms"
-    //               << std::endl;
-    //     return false;
-    // }
 
     const auto taken = std::accumulate(begin(data), end(data), 0, [](const int &acc, const ParkingSpot &ps)
                                        { return acc + (ps.is_occupied ? 1 : 0); });
@@ -290,7 +250,7 @@ bool SparkProducerSocket::sendOccupancyDataDebounced(const std::vector<ParkingSp
     bool success = bytes_sent != -1;
     if (success)
     {
-        std::cout << "Sent telemetry: " << payload_str << std::endl;
+        // std::cout << "Sent telemetry: " << payload_str << std::endl;
         next_transmit_time = std::chrono::system_clock::now() + min_transmit_period;
     }
     return success;
