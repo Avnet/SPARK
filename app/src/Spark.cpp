@@ -157,7 +157,6 @@ bool camera_input = false;
 
 MeraDrpRuntimeWrapper runtime;
 
-uint64_t drpaimem_addr_start = 0;
 bool runtime_status = false;
 
 /**
@@ -579,10 +578,11 @@ void process_frames(queue<Mat> &frames, bool &stop, std::shared_ptr<SparkProduce
  * Arguments     : -
  * Return value  : uint32_t = DRPAImem start address in 32-bit.
  ******************************************/
-uint32_t get_drpai_start_addr()
+std::optional<uint32_t> get_drpai_start_addr()
 {
     int fd = 0;
     int ret = 0;
+    // Defined in drpai.h
     drpai_data_t drpai_data;
 
     errno = 0;
@@ -591,7 +591,7 @@ uint32_t get_drpai_start_addr()
     if (0 > fd)
     {
         LOG(FATAL) << "[ERROR] Failed to open DRP-AI Driver : errno=" << errno;
-        return NULL;
+        return std::nullopt;
     }
 
     /* Get DRP-AI Memory Area Address via DRP-AI Driver */
@@ -599,7 +599,7 @@ uint32_t get_drpai_start_addr()
     if (-1 == ret)
     {
         LOG(FATAL) << "[ERROR] Failed to get DRP-AI Memory Area : errno=" << errno;
-        return (uint32_t)NULL;
+        return std::nullopt;
     }
 
     return drpai_data.address;
@@ -609,7 +609,14 @@ int main(int argc, char **argv)
 {
 
     /*Load model_dir structure and its weight to runtime object */
-    drpaimem_addr_start = get_drpai_start_addr();
+    auto drpaimem_addr_start = get_drpai_start_addr();
+    if (!drpaimem_addr_start.has_value())
+    {
+        /* Error notifications are output from function get_drpai_start_addr(). */
+        fprintf(stderr, "[ERROR] Failed to get DRP-AI memory area start address. \n");
+        return -1;
+    }
+
     parking_spots = disk_utils::deserializeROIs();
 
     std::shared_ptr<SparkProducerSocket> producerSocket;
@@ -623,15 +630,8 @@ int main(int argc, char **argv)
         producerSocket = nullptr;
     }
 
-    if (drpaimem_addr_start == (uint64_t)NULL)
-    {
-        /* Error notifications are output from function get_drpai_start_addr(). */
-        fprintf(stderr, "[ERROR] Failed to get DRP-AI memory area start address. \n");
-        return -1;
-    }
-
     // runtime_status = false
-    runtime_status = runtime.LoadModel(model_dir, drpaimem_addr_start + DRPAI_MEM_OFFSET);
+    runtime_status = runtime.LoadModel(model_dir, drpaimem_addr_start.value() + DRPAI_MEM_OFFSET);
 
     if (!runtime_status)
     {
