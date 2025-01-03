@@ -665,7 +665,7 @@ int main(int argc, char **argv)
                 const std::string slot_text = "Monitoring " + std::to_string(parking_spots.size()) + " slots";
                 int baseline_slot_text = 0;
                 const auto slot_text_size = getTextSize(slot_text, FONT_HERSHEY_SIMPLEX, SECONDARY_LABEL_SCALE, 2, &baseline_slot_text);
-                putText(frame, slot_text, BUTTON_2_TL - Point(0, baseline_slot_text), FONT_HERSHEY_SIMPLEX, SECONDARY_LABEL_SCALE, BLACK, 2);
+                putText(frame, slot_text, BUTTON_2_TL - Point(0, baseline_slot_text), FONT_HERSHEY_SIMPLEX, SECONDARY_LABEL_SCALE, WHITE, 2);
             }
             rectangle(frame, BUTTON_2_TL, BUTTON_2_BR, BLACK, -1);
             putText(frame, "Start Inference", Point(687 + (int)150 / 4, 553), FONT_HERSHEY_SIMPLEX, 0.5, WHITE, 1);
